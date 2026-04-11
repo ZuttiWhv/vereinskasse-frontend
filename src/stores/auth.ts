@@ -17,6 +17,7 @@ export const useAuthStore = defineStore('auth', {
     refreshToken: localStorage.getItem('refresh_token'),
     user: JSON.parse(localStorage.getItem('user') || 'null') as UserProfile | null,
     authorities: JSON.parse(localStorage.getItem('authorities') || '[]') as string[],
+    isLoading: false,
   }),
 
   getters: {
@@ -51,6 +52,8 @@ export const useAuthStore = defineStore('auth', {
       } catch (error) {
         console.error('Login fehlgeschlagen:', error)
         throw error // Fehler an die LoginView weitergeben
+      } finally {
+        this.isLoading = false // Beenden (egal ob Erfolg oder Fehler)
       }
     },
 

@@ -24,8 +24,11 @@
             </div>
 
             <div class="flex-grow space-y-2">
-              <label class="block text-sm font-medium text-gray-700">Neues Logo hochladen</label>
+              <label for="uploadLogoPath" class="block text-sm font-medium text-gray-700"
+                >Neues Logo hochladen</label
+              >
               <input
+                id="uploadLogoPath"
                 type="file"
                 @change="handleLogoUpload"
                 accept="image/*"
@@ -123,6 +126,7 @@
               v-if="settings.logoPath"
               :src="getFullLogoUrl(settings.logoPath)"
               class="h-6 mr-2"
+              alt="Logo"
             />
             <div v-else class="w-6 h-6 bg-white/20 rounded-full mr-2"></div>
             <div class="text-xs font-bold truncate">{{ settings.vereinName }}</div>
@@ -183,9 +187,15 @@ const handleLogoUpload = async (event: Event) => {
 
   const file = target.files[0]
   const formData = new FormData()
-  formData.append('file', file)
 
-  uploading.value = true
+  if (file) {
+    formData.append('file', file)
+    uploading.value = true
+  } else {
+    console.error('Keine Datei ausgewählt!')
+    return
+  }
+
   try {
     const { data } = await apiClient.post('/api/media/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -202,7 +212,7 @@ const saveSettings = async () => {
   isSaving.value = true
   try {
     await apiClient.put('/api/settings', settings.value)
-    window.location.reload()
+    globalThis.location.reload()
   } catch (error) {
     alert('Fehler beim Speichern.')
   } finally {

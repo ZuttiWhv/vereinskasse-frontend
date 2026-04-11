@@ -66,3 +66,9 @@ export interface SaleRequest {
   amount: number
   userId?: number // Optional, da nur Admins (WRITE_ALL_SALES) dies setzen
 }
+
+export interface UserBalance {
+  userId: number
+  username: string
+  balanceInCents: number
+}

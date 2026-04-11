@@ -9,8 +9,9 @@
       </div>
 
       <div class="flex items-center gap-4">
-        <label class="text-sm font-medium text-gray-600">Stichtag:</label>
+        <label for="stichtag-input"  class="text-sm font-medium text-gray-600">Stichtag:</label>
         <input
+          id="stichtag-input"
           v-model="stichtag"
           type="datetime-local"
           @change="fetchBalances"
@@ -82,9 +83,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import apiClient from '@/api/client'
+import type { UserBalance } from '@/types'
 
 const stichtag = ref(new Date().toISOString().slice(0, 16))
-const balances = ref([])
+const balances = ref<UserBalance[]>([])
 
 const fetchBalances = async () => {
   try {
