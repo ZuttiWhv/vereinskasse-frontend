@@ -1,28 +1,34 @@
 import { fileURLToPath, URL } from 'node:url'
-import { defineConfig } from 'vite'
+import { defineConfig, UserConfig } from 'vite' // UserConfig hinzufügen
 import vue from '@vitejs/plugin-vue'
 
-export default defineConfig({
-  plugins: [vue()],
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
-    },
-  },
-  server: {
-    proxy: {
-      // Leitet alle Anfragen, die mit /auth beginnen, weiter
-      '/auth': {
-        target: 'http://localhost:8080', // Hier die URL deines Backends eintragen
-        changeOrigin: true,
-        secure: false,
-      },
-      // Leitet alle Anfragen, die mit /api beginnen, weiter
-      '/api': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-        secure: false,
+export default defineConfig(({ command, mode }): UserConfig => {
+  // Typ hier setzen
+  return {
+    plugins: [vue()],
+    resolve: {
+      alias: {
+        '@': fileURLToPath(new URL('./src', import.meta.url)),
       },
     },
-  },
+    server: {
+      // Wir casten das Objekt als 'any' oder definieren es präzise,
+      // damit TS bei der leeren Version {} nicht meckert
+      proxy:
+        command === 'serve'
+          ? {
+              '/auth': {
+                target: 'http://localhost:8080',
+                changeOrigin: true,
+                secure: false,
+              },
+              '/api': {
+                target: 'http://localhost:8080',
+                changeOrigin: true,
+                secure: false,
+              },
+            }
+          : undefined, // Nutze 'undefined' statt {}, das ist sauberer für Vite
+    },
+  }
 })
