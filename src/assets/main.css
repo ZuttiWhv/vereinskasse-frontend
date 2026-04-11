@@ -1,0 +1,17 @@
+
+
+@import "tailwindcss";
+
+/* Falls du eine tailwind.config.ts hast, MUSS sie hier importiert werden */
+@config "../../tailwind.config.ts";
+
+/* Erzwinge das Box-Modell, damit Paddings die Breite nicht sprengen */
+@layer base {
+    *, ::before, ::after {
+        box-sizing: border-box;
+    }
+
+    body {
+        @apply m-0 p-0 overflow-x-hidden;
+    }
+}
