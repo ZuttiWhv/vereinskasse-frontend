@@ -1,11 +1,10 @@
-version: '3.8'
-
 services:
   frontend:
-    image: zuttiwhv/vereinskasse-frontend-dev:latest
+    image: zuttiwhv/vereinskasse-frontend:latest
     container_name: vereinskasse-frontend
     restart: on-failure:3
     environment:
+      # Muss auf jeden Fall angepasst werden
       - BACKEND_URL=https://deine-server-ip:8443
     ports:
       - "80:80"
