@@ -2,12 +2,13 @@ version: '3.8'
 
 services:
   frontend:
+    image: zuttiwhv/vereinskasse-frontend-dev:latest
     container_name: vereinskasse-frontend
+    restart: on-failure:3
     environment:
       - BACKEND_URL=https://deine-server-ip:8443
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      # Wir spiegeln den lokalen Ordner ./certs-frontend in den Container
       - ./certs:/etc/nginx/certs
