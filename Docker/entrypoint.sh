@@ -9,7 +9,7 @@ KEY_FILE="$CERT_DIR/key.pem"
 if [ ! -f "$CERT_FILE" ] || [ ! -f "$KEY_FILE" ]; then
     echo "Keine SSL-Zertifikate gefunden. Generiere selbstsignierte Zertifikate..."
     mkdir -p "$CERT_DIR"
-    openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+    openssl req -x509 -nodes -days 3650 -newkey rsa:4096 \
       -keyout "$KEY_FILE" \
       -out "$CERT_FILE" \
       -subj "/C=DE/ST=State/L=City/O=Verein/OU=IT/CN=vereinskasse.local"
