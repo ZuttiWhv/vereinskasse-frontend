@@ -11,5 +11,4 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      # Wir spiegeln den lokalen Ordner ./certs-frontend in den Container
       - ./certs:/etc/nginx/certs
