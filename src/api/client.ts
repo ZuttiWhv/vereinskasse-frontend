@@ -21,7 +21,7 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config
 
     // Falls 401 Unauthorized und wir haben noch nicht versucht zu refreshen
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url.includes('/auth/refresh')) {
       originalRequest._retry = true
 
       try {
@@ -37,7 +37,7 @@ apiClient.interceptors.response.use(
         // Wenn Refresh fehlschlägt: Logout und ab zum Login
         authStore.logout()
         // Wir nutzen hier window.location, um einen sauberen State-Schnitt zu machen
-        window.location.href = '/login'
+        globalThis.location.href = '/login'
         return Promise.reject(refreshError)
       }
     }

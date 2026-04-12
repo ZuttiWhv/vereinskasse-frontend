@@ -1,0 +1,39 @@
+services:
+  # --- BACKEND: Spring Boot Server ---
+  backend:
+    image: zuttiwhv/vereinskasse-server-dev:latest
+    container_name: vereinskasse-server
+    restart: on-failure:3
+    # Port 8443 muss nur nach außen geöffnet werden, wenn man direkt
+    # (ohne Frontend/Nginx) darauf zugreifen will.
+    ports:
+      - "8443:8443"
+    environment:
+      # Nur mit gutem Grund ändern (und wenn du weißt was du tust)
+      - SPRING_PROFILES_ACTIVE=prod
+      - SERVER_PORT=8443
+      - DB_URL=jdbc:h2:file:/app/data/vereinskasse
+      - UPLOAD_DIR=/app/data/media
+      # SICHERHEIT: Diese Werte MÜSSEN vom Benutzer geändert werden
+      - JWT_SECRET=HierSollteEinEigenesGeheimesKennwortmitWenigstens64AlphanumerischenZeichenHin
+      - SSL_PASSWORD=HiermitWerdenDieSSLZertifikateGesichert
+      - DB_USER=vereinskasse_DB_user
+      - DB_PASSWORD=vereinskasse_DB_passwort
+    volumes:
+      - ./data:/app/data
+      - ./certs:/app/certs
+
+  # --- FRONTEND: Nginx Reverse Proxy & Web-App ---
+  frontend:
+    image: zuttiwhv/vereinskasse-frontend:latest
+    container_name: vereinskasse-frontend
+    restart: on-failure:3
+    depends_on:
+      - backend
+    environment:
+      - BACKEND_URL=https://backend:8443
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./certs:/etc/nginx/certs
