@@ -1,18 +1,18 @@
 #!/bin/sh
-set -e # Beendet das Skript sofort, wenn ein Befehl fehlschlägt
+set -e
 
+# Wir nutzen den Pfad, den du im VOLUME definiert hast
 CERT_DIR="/etc/nginx/certs"
 CERT_FILE="$CERT_DIR/cert.pem"
 KEY_FILE="$CERT_DIR/key.pem"
 
 # --- SSL-ZERTIFIKAT LOGIK ---
-# Prüfen, ob Zertifikate bereits existieren (z.B. durch ein gemountetes Volume)
 if [ ! -f "$CERT_FILE" ] || [ ! -f "$KEY_FILE" ]; then
     echo "Keine SSL-Zertifikate gefunden. Generiere selbstsignierte Zertifikate..."
 
-    # Erstellt ein 2048-bit RSA Schlüsselpaar und ein Zertifikat,
-    # das 10 Jahre (3650 Tage) gültig ist.
-    # '/CN=vereinskasse.local' ist ein Platzhalter-Name.
+    # Sicherstellen, dass der Ordner existiert (falls Volume leer)
+    mkdir -p "$CERT_DIR"
+
     openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
       -keyout "$KEY_FILE" \
       -out "$CERT_FILE" \
@@ -23,16 +23,14 @@ else
     echo "Vorhandene SSL-Zertifikate werden verwendet."
 fi
 
-
-# --- BACKEND_URL LOGIK ---
-# Nginx ersetzt standardmäßig Variablen nur im Ordner /etc/nginx/conf.d/.
-# Das offizielle Nginx-Image führt 'envsubst' auf Templates aus, bevor der Hauptprozess startet.
-# Wir stellen sicher, dass die Standard-Aktion des Nginx-Images ausgeführt wird:
+# --- NGINX TEMPLATES ---
+# Das offizielle Nginx-Image nutzt ein internes Skript, um Variablen in
+# /etc/nginx/templates/*.template zu ersetzen und nach /etc/nginx/conf.d/ zu schreiben.
 if [ -d "/etc/nginx/templates" ]; then
     echo "Verarbeite Nginx-Templates..."
-    /usr/local/bin/docker-entrypoint.sh "/@" # Führt das originale Nginx-Skript aus
+    # Wir rufen das Original-Skript auf, das die Arbeit erledigt
+    /docker-entrypoint.sh echo "Templates verarbeitet."
 fi
 
-# Jetzt, wo alles vorbereitet ist, starten wir Nginx im Vordergrund.
 echo "Starte Nginx..."
 exec nginx -g "daemon off;"
