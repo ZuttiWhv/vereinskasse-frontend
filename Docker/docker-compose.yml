@@ -2,13 +2,12 @@ version: '3.8'
 
 services:
   frontend:
-    build: .
+    container_name: vereinskasse-frontend
     environment:
-      - BACKEND_URL=https://127.0.0.1:8443
+      - BACKEND_URL=https://deine-server-ip:8443
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - certs:/etc/nginx/certs:ro
-volumes:
-  certs:
+      # Wir spiegeln den lokalen Ordner ./certs-frontend in den Container
+      - ./certs:/etc/nginx/certs
