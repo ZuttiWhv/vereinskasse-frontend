@@ -58,6 +58,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, requiredAuthorities: 'WRITE_USER' },
   },
   {
+    path: '/admin/devices',
+    name: 'device-management',
+    component: () => import('@/views/admin/CertificateManagement.vue'),
+    meta: { requiresAuth: true, requiredAuthorities: 'WRITE_USER' },
+  },
+  {
     path: '/sales-history',
     name: 'sales-history',
     component: () => import('@/views/SalesHistory.vue'),

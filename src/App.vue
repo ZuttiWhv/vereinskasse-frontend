@@ -81,6 +81,13 @@
                   >Produkte</router-link
                 >
                 <router-link
+                  v-if="authStore.hasAuthority('WRITE_DEVICE')"
+                  to="/admin/devices"
+                  class="drop-item"
+                  @click="isAdminMenuOpen = false"
+                  >Geräteverwaltung</router-link
+                >
+                <router-link
                   v-if="authStore.hasAuthority('WRITE_USER')"
                   to="/admin/users"
                   class="drop-item"
