@@ -81,6 +81,13 @@
                   >Produkte</router-link
                 >
                 <router-link
+                  v-if="authStore.hasAuthority('WRITE_BILLING_GROUP')"
+                  to="/admin/billinggroups"
+                  class="drop-item"
+                  @click="isAdminMenuOpen = false"
+                  >Abrechnungsgruppen</router-link
+                >
+                <router-link
                   v-if="authStore.hasAuthority('WRITE_DEVICE')"
                   to="/admin/devices"
                   class="drop-item"

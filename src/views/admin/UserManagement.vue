@@ -35,7 +35,7 @@
               class="bg-gray-50 border-b border-gray-100 text-gray-600 text-sm uppercase font-bold"
             >
               <th class="px-6 py-4">Benutzername</th>
-              <th class="px-6 py-4">Rollen</th>
+              <th class="px-6 py-4">Gruppe / Rollen</th>
               <th class="px-6 py-4 text-right">Guthaben</th>
               <th class="px-6 py-4 text-right">Aktionen</th>
             </tr>
@@ -46,7 +46,12 @@
                 <div class="font-bold text-gray-900">{{ user.username }}</div>
               </td>
               <td class="px-6 py-4">
-                <div class="flex flex-wrap gap-1">
+                <div class="flex flex-wrap gap-1 items-center">
+                  <span
+                    class="px-2 py-0.5 bg-purple-50 text-purple-600 border border-purple-100 rounded text-xs font-bold mr-1"
+                  >
+                    {{ user.billingGroupName || 'Keine Gruppe' }}
+                  </span>
                   <span
                     v-for="roleName in user.roles"
                     :key="roleName"
@@ -110,7 +115,7 @@
             &times;
           </button>
         </div>
-        <div class="p-6 space-y-4">
+        <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Benutzername</label>
             <input
@@ -119,6 +124,25 @@
               class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Abrechnungsgruppe</label>
+            <select
+              v-model="formData.billingGroupId"
+              class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option :value="null" disabled>Bitte Gruppe wählen...</option>
+              <option v-for="group in billingGroups" :key="group.id" :value="group.id">
+                {{ group.name }}
+                {{
+                  group.allowNegativeBalance
+                    ? '(Dispo: ' + group.creditLimit / 100 + '€)'
+                    : '(Nur Guthaben)'
+                }}
+              </option>
+            </select>
+          </div>
+
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">{{
               isEditing ? 'Neues Passwort (optional)' : 'Passwort'
@@ -129,6 +153,7 @@
               class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
+
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Rollen zuweisen</label>
             <div
@@ -234,11 +259,11 @@ const authStore = useAuthStore()
 // --- ZUSTAND (STATE) ---
 const users = ref<any[]>([])
 const roles = ref<any[]>([])
+const billingGroups = ref<any[]>([]) // NEU: Abrechnungsgruppen
 const searchQuery = ref('')
 const showModal = ref(false)
 const isEditing = ref(false)
 
-// NEU: Deposit State
 const showDepositModal = ref(false)
 const depositAmount = ref<number>(0)
 const selectedUserForDeposit = ref<any>(null)
@@ -248,9 +273,10 @@ const formData = ref({
   username: '',
   password: '',
   roleIds: [] as number[],
+  billingGroupId: null as number | null, // NEU
 })
 
-// --- COMPUTED (SORTIERUNG & SUCHE) ---
+// --- COMPUTED ---
 const filteredUsers = computed(() => {
   const filtered = users.value.filter((user) =>
     user.username.toLowerCase().includes(searchQuery.value.toLowerCase()),
@@ -261,11 +287,14 @@ const filteredUsers = computed(() => {
 })
 
 const isFormValid = computed(() => {
-  const basic = formData.value.username.length >= 3 && formData.value.roleIds.length > 0
+  const basic =
+    formData.value.username.length >= 3 &&
+    formData.value.roleIds.length > 0 &&
+    formData.value.billingGroupId !== null // Pflichtfeld Gruppe
   return isEditing.value ? basic : basic && formData.value.password.length >= 4
 })
 
-// --- AKTIONEN (LOGIK) ---
+// --- AKTIONEN ---
 const fetchUsers = async () => {
   try {
     const { data } = await apiClient.get('/api/users')
@@ -284,7 +313,15 @@ const fetchRoles = async () => {
   }
 }
 
-// NEU: Einzahlungs-Logik
+const fetchBillingGroups = async () => {
+  try {
+    const { data } = await apiClient.get('/api/billing-groups')
+    billingGroups.value = data
+  } catch (error) {
+    console.error('Fehler beim Laden der Abrechnungsgruppen', error)
+  }
+}
+
 const openDepositModal = (user: any) => {
   selectedUserForDeposit.value = user
   depositAmount.value = 0
@@ -293,19 +330,13 @@ const openDepositModal = (user: any) => {
 
 const handleDeposit = async () => {
   if (depositAmount.value <= 0 || !selectedUserForDeposit.value) return
-
   try {
     const amountInCents = Math.round(depositAmount.value * 100)
     await apiClient.post(`/api/users/${selectedUserForDeposit.value.id}/deposit`, amountInCents)
-
-    // 1. Die Liste der User in der Tabelle aktualisieren (damit der Kassenwart sieht, dass es geklappt hat)
     await fetchUsers()
-
-    // 2. NEU: Wenn der Kassenwart für SICH SELBST eingezahlt hat, die Menüleiste updaten
     if (selectedUserForDeposit.value.id === authStore.user?.id) {
       await authStore.fetchProfile()
     }
-
     showDepositModal.value = false
     depositAmount.value = 0
   } catch (error: any) {
@@ -322,10 +353,19 @@ const openModal = (user: any = null) => {
       username: user.username,
       password: '',
       roleIds: userRoleIds,
+      billingGroupId: user.billingGroupId || null, // ID aus dem User-Objekt (Backend muss UserResponse anpassen!)
     }
   } else {
     isEditing.value = false
-    formData.value = { id: null, username: '', password: '', roleIds: [] }
+    // Versuche die Standard-Gruppe voreinzustellen
+    const defaultGroup = billingGroups.value.find((g) => g.isDefault)
+    formData.value = {
+      id: null,
+      username: '',
+      password: '',
+      roleIds: [],
+      billingGroupId: defaultGroup ? defaultGroup.id : null,
+    }
   }
   showModal.value = true
 }
@@ -335,6 +375,7 @@ const saveUser = async () => {
     const payload = {
       username: formData.value.username,
       roleIds: formData.value.roleIds,
+      billingGroupId: formData.value.billingGroupId, // NEU
       ...(formData.value.password && { password: formData.value.password }),
     }
 
@@ -369,5 +410,6 @@ const formatCurrency = (cents: number) => {
 onMounted(() => {
   fetchUsers()
   fetchRoles()
+  fetchBillingGroups() // NEU
 })
 </script>
