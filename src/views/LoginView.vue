@@ -22,7 +22,7 @@ const checkQuickLogin = async () => {
   try {
     const { data: settings } = await apiClient.get('/api/settings')
     if (settings.quickLogin) {
-      const { data: tree } = await apiClient.get('/api/public/org-tree')
+      const { data: tree } = await apiClient.get('/api/org-tree')
       if (tree && tree.length > 0) {
         currentLevel.value = { subUnits: tree, usernames: [], name: 'Start' }
         hasQuickLogin.value = true
