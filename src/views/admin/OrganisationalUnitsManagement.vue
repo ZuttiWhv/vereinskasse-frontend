@@ -67,24 +67,37 @@ import { ref, onMounted } from 'vue'
 import apiClient from '@/api/client'
 import OrgUnitItem from '@/components/admin/OrgUnitItem.vue'
 
-const orgTree = ref([])
-const showModal = ref(false)
-const newUnitName = ref('')
-const selectedParent = ref<any>(null)
-
-const fetchTree = async () => {
-  // Wir nutzen hier den Admin-Endpunkt, der den Baum liefert
-  const { data } = await apiClient.get('/api/org-units/admin-tree')
-  orgTree.value = data
+// 1. Interface definieren, damit TS den Typ kennt
+interface OrgUnit {
+  id: number
+  name: string
+  subUnits?: OrgUnit[]
 }
 
-const openModal = (parent: any = null) => {
+// 2. Den Ref mit dem Typ initialisieren (wichtig: <OrgUnit[]>)
+const orgTree = ref<OrgUnit[]>([])
+const showModal = ref(false)
+const newUnitName = ref('')
+const selectedParent = ref<OrgUnit | null>(null)
+
+const fetchTree = async () => {
+  try {
+    const { data } = await apiClient.get('/api/org-units/admin-tree')
+    orgTree.value = data
+  } catch (e) {
+    console.error('Fehler beim Laden des Baums', e)
+  }
+}
+
+const openModal = (parent: OrgUnit | null = null) => {
   selectedParent.value = parent
   newUnitName.value = ''
   showModal.value = true
 }
 
 const saveUnit = async () => {
+  if (!newUnitName.value) return
+
   try {
     await apiClient.post('/api/org-units', {
       name: newUnitName.value,
@@ -103,8 +116,12 @@ const confirmDelete = async (id: number) => {
       'Möchtest du diese Einheit wirklich löschen? Alle Untergruppen werden ebenfalls gelöscht.',
     )
   ) {
-    await apiClient.delete(`/api/org-units/${id}`)
-    fetchTree()
+    try {
+      await apiClient.delete(`/api/org-units/${id}`)
+      fetchTree()
+    } catch (e) {
+      alert('Löschen fehlgeschlagen')
+    }
   }
 }
 
