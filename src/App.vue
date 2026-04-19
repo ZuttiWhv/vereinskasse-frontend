@@ -74,6 +74,13 @@
                   >Rollen & Rechte</router-link
                 >
                 <router-link
+                  v-if="authStore.hasAuthority('WRITE_OUS')"
+                  to="/admin/ous"
+                  class="drop-item"
+                  @click="isAdminMenuOpen = false"
+                  >Benutzerorganisation</router-link
+                >
+                <router-link
                   v-if="authStore.hasAuthority('WRITE_PRODUCT')"
                   to="/admin/products"
                   class="drop-item"
@@ -114,7 +121,7 @@
                   to="/admin/settings"
                   class="drop-item"
                   @click="isAdminMenuOpen = false"
-                  >⚙️ Design-Setup</router-link
+                  >⚙️ Einstellungen</router-link
                 >
               </div>
             </div>

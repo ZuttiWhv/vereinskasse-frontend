@@ -64,6 +64,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, requiredAuthorities: 'WRITE_BILLING_GROUP' },
   },
   {
+    path: '/admin/ous',
+    name: 'organisational-units-management',
+    component: () => import('@/views/admin/OrganisationalUnitsManagement.vue'),
+    meta: { requiresAuth: true, requiredAuthorities: 'WRITE_OUS' },
+  },
+  {
     path: '/admin/devices',
     name: 'device-management',
     component: () => import('@/views/admin/CertificateManagement.vue'),
