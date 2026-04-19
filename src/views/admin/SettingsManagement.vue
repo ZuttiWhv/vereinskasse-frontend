@@ -249,11 +249,15 @@ const getFullLogoUrl = (filename: string) => {
 
 const handleLogoUpload = async (event: Event) => {
   const target = event.target as HTMLInputElement
-  if (!target.files || target.files.length === 0) return
+  // 1. Wir holen uns die Datei in eine Konstante
+  const file = target.files?.[0]
 
-  const file = target.files[0]
+  // 2. Wir prüfen explizit: Wenn keine Datei da ist, brechen wir ab
+  // TypeScript weiß ab hier: 'file' ist garantiert vom Typ 'File'
+  if (!file) return
+
   const formData = new FormData()
-  formData.append('file', file)
+  formData.append('file', file) // Jetzt ist TS zufrieden
 
   uploading.value = true
   try {
@@ -265,6 +269,8 @@ const handleLogoUpload = async (event: Event) => {
     alert('Upload fehlgeschlagen.')
   } finally {
     uploading.value = false
+    // Optional: Input zurücksetzen, damit die gleiche Datei erneut gewählt werden kann
+    target.value = ''
   }
 }
 
