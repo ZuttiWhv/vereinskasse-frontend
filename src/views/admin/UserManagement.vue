@@ -3,7 +3,7 @@
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
       <div>
         <h1 class="text-2xl font-bold text-gray-800">Benutzerverwaltung</h1>
-        <p class="text-sm text-gray-500">Verwalte Mitglieder, Rollen und Guthaben.</p>
+        <p class="text-sm text-gray-500">Verwalte Mitglieder, Rollen, OUs und Guthaben.</p>
       </div>
 
       <div class="flex flex-col sm:flex-row w-full md:w-auto gap-3">
@@ -35,7 +35,8 @@
               class="bg-gray-50 border-b border-gray-100 text-gray-600 text-sm uppercase font-bold"
             >
               <th class="px-6 py-4">Benutzername</th>
-              <th class="px-6 py-4">Gruppe / Rollen</th>
+              <th class="px-6 py-4">Abrechnung / Abteilung</th>
+              <th class="px-6 py-4">Rollen</th>
               <th class="px-6 py-4 text-right">Guthaben</th>
               <th class="px-6 py-4 text-right">Aktionen</th>
             </tr>
@@ -46,12 +47,21 @@
                 <div class="font-bold text-gray-900">{{ user.username }}</div>
               </td>
               <td class="px-6 py-4">
-                <div class="flex flex-wrap gap-1 items-center">
+                <div class="flex flex-col gap-1">
                   <span
-                    class="px-2 py-0.5 bg-purple-50 text-purple-600 border border-purple-100 rounded text-xs font-bold mr-1"
+                    class="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded border border-purple-100 w-fit"
                   >
-                    {{ user.billingGroupName || 'Keine Gruppe' }}
+                    💰 {{ user.billingGroupName || 'Keine Abrechnungsgruppe' }}
                   </span>
+                  <span
+                    class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 w-fit"
+                  >
+                    🏢 {{ user.orgUnitName || 'Keine Abteilung' }}
+                  </span>
+                </div>
+              </td>
+              <td class="px-6 py-4">
+                <div class="flex flex-wrap gap-1">
                   <span
                     v-for="roleName in user.roles"
                     :key="roleName"
@@ -123,6 +133,21 @@
               type="text"
               class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
             />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1"
+              >Abteilung / OU (für Quick-Login)</label
+            >
+            <select
+              v-model="formData.orgUnitId"
+              class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+            >
+              <option :value="null">-- Keine Abteilung --</option>
+              <option v-for="unit in orgUnits" :key="unit.id" :value="unit.id">
+                {{ unit.name }}
+              </option>
+            </select>
           </div>
 
           <div>
@@ -259,7 +284,8 @@ const authStore = useAuthStore()
 // --- ZUSTAND (STATE) ---
 const users = ref<any[]>([])
 const roles = ref<any[]>([])
-const billingGroups = ref<any[]>([]) // NEU: Abrechnungsgruppen
+const billingGroups = ref<any[]>([])
+const orgUnits = ref<any[]>([]) // NEU: Organisationseinheiten
 const searchQuery = ref('')
 const showModal = ref(false)
 const isEditing = ref(false)
@@ -273,7 +299,8 @@ const formData = ref({
   username: '',
   password: '',
   roleIds: [] as number[],
-  billingGroupId: null as number | null, // NEU
+  billingGroupId: null as number | null,
+  orgUnitId: null as number | null, // NEU
 })
 
 // --- COMPUTED ---
@@ -290,7 +317,7 @@ const isFormValid = computed(() => {
   const basic =
     formData.value.username.length >= 3 &&
     formData.value.roleIds.length > 0 &&
-    formData.value.billingGroupId !== null // Pflichtfeld Gruppe
+    formData.value.billingGroupId !== null
   return isEditing.value ? basic : basic && formData.value.password.length >= 4
 })
 
@@ -319,6 +346,16 @@ const fetchBillingGroups = async () => {
     billingGroups.value = data
   } catch (error) {
     console.error('Fehler beim Laden der Abrechnungsgruppen', error)
+  }
+}
+
+const fetchOrgUnits = async () => {
+  try {
+    // Wir nutzen hier die flache Liste für das Dropdown
+    const { data } = await apiClient.get('/api/org-units')
+    orgUnits.value = data.sort((a: any, b: any) => a.name.localeCompare(b.name))
+  } catch (error) {
+    console.error('Fehler beim Laden der OUs', error)
   }
 }
 
@@ -353,11 +390,11 @@ const openModal = (user: any = null) => {
       username: user.username,
       password: '',
       roleIds: userRoleIds,
-      billingGroupId: user.billingGroupId || null, // ID aus dem User-Objekt (Backend muss UserResponse anpassen!)
+      billingGroupId: user.billingGroupId || null,
+      orgUnitId: user.orgUnitId || null, // NEU
     }
   } else {
     isEditing.value = false
-    // Versuche die Standard-Gruppe voreinzustellen
     const defaultGroup = billingGroups.value.find((g) => g.isDefault)
     formData.value = {
       id: null,
@@ -365,6 +402,7 @@ const openModal = (user: any = null) => {
       password: '',
       roleIds: [],
       billingGroupId: defaultGroup ? defaultGroup.id : null,
+      orgUnitId: null,
     }
   }
   showModal.value = true
@@ -375,7 +413,8 @@ const saveUser = async () => {
     const payload = {
       username: formData.value.username,
       roleIds: formData.value.roleIds,
-      billingGroupId: formData.value.billingGroupId, // NEU
+      billingGroupId: formData.value.billingGroupId,
+      orgUnitId: formData.value.orgUnitId, // NEU
       ...(formData.value.password && { password: formData.value.password }),
     }
 
@@ -410,6 +449,7 @@ const formatCurrency = (cents: number) => {
 onMounted(() => {
   fetchUsers()
   fetchRoles()
-  fetchBillingGroups() // NEU
+  fetchBillingGroups()
+  fetchOrgUnits() // NEU
 })
 </script>
