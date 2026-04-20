@@ -57,6 +57,27 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    async pinLogin(credentials: { username: string; pin: string }) {
+      this.isLoading = true // Starten
+      try {
+        // Der API-Aufruf an deinen neuen PIN-Endpunkt
+        const { data } = await apiClient.post<LoginResponse>('/auth/pin/login', credentials)
+
+        this.setTokens(data)
+
+        apiClient.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`
+
+        await this.fetchProfile()
+
+        return true
+      } catch (error) {
+        console.error('PIN-Login fehlgeschlagen:', error)
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
     // Der Router sucht nach dieser Methode beim Page-Refresh
     async fetchAuthorities() {
       if (this.isAuthenticated) {
