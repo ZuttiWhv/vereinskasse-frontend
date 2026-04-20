@@ -252,8 +252,6 @@ const handleLogoUpload = async (event: Event) => {
   // 1. Wir holen uns die Datei in eine Konstante
   const file = target.files?.[0]
 
-  // 2. Wir prüfen explizit: Wenn keine Datei da ist, brechen wir ab
-  // TypeScript weiß ab hier: 'file' ist garantiert vom Typ 'File'
   if (!file) return
 
   const formData = new FormData()
