@@ -66,6 +66,8 @@
           <div class="mb-4">
             <label class="block text-sm font-medium text-gray-700">Name der Kategorie</label>
             <input
+              id="catname"
+              @focus="kbStore.open('catname', form.name)"
               v-model="form.name"
               type="text"
               :class="[
@@ -115,6 +117,8 @@ import { ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import apiClient from '@/api/client'
 import { mediaApi } from '@/api/mediaApi'
+import { useKeyboardStore } from '@/stores/keyboard'
+const kbStore = useKeyboardStore()
 
 const authStore = useAuthStore()
 const categories = ref<any[]>([])

@@ -17,6 +17,8 @@
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Neues Passwort</label>
           <input
+            id="password"
+            @focus="kbStore.open('password', formData.newPassword)"
             v-model="formData.newPassword"
             type="password"
             placeholder="Mindestens 4 Zeichen"
@@ -48,6 +50,8 @@
 
           <div class="flex flex-col items-center gap-4">
             <input
+              id="pin"
+              @focus="kbStore.open('pin', formData.newPin)"
               v-model="formData.newPin"
               type="password"
               inputmode="numeric"
@@ -101,6 +105,8 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import apiClient from '@/api/client'
+import { useKeyboardStore } from '@/stores/keyboard'
+const kbStore = useKeyboardStore()
 
 const formData = ref({
   newPassword: '',

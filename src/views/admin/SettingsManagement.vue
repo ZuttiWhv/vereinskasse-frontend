@@ -109,6 +109,8 @@
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Vereinsname</label>
             <input
+              id="name"
+              @focus="kbStore.open('name', settings.vereinName)"
               v-model="settings.vereinName"
               type="text"
               class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
@@ -219,6 +221,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import apiClient from '@/api/client'
+import { useKeyboardStore } from '@/stores/keyboard'
+const kbStore = useKeyboardStore()
 
 const isSaving = ref(false)
 const uploading = ref(false)
@@ -229,8 +233,8 @@ const settings = ref({
   secondaryColor: '#1e40af',
   navTextColor: '#ffffff',
   logoPath: '',
-  quickLogin: false, // Hinzugefügt
-  pinLogin: false, // Hinzugefügt
+  quickLogin: false,
+  pinLogin: false,
 })
 
 const fetchSettings = async () => {

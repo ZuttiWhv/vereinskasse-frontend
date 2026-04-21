@@ -39,6 +39,8 @@
         <input
           v-model="newUnitName"
           @keyup.enter="saveUnit"
+          id="unit-name"
+          @focus="kbStore.open('unit-name', newUnitName)"
           type="text"
           class="w-full border-2 border-gray-100 rounded-xl p-3 outline-none focus:border-emerald-500 transition mb-6"
           placeholder="Name, z.B. Jugendfußball"
@@ -66,6 +68,8 @@
 import { ref, onMounted } from 'vue'
 import apiClient from '@/api/client'
 import OrgUnitItem from '@/components/admin/OrgUnitItem.vue'
+import { useKeyboardStore } from '@/stores/keyboard'
+const kbStore = useKeyboardStore()
 
 // 1. Interface definieren, damit TS den Typ kennt
 interface OrgUnit {
