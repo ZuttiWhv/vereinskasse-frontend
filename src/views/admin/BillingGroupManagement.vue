@@ -157,9 +157,11 @@
               <div class="relative">
                 <input
                   id="inputlimit"
-                  @focus="kbStore.open('inputlimit', displayLimit)"
+                  @focus="kbStore.open('inputlimit', displayLimit, 'numeric')"
                   v-model="displayLimit"
-                  type="number"
+                  type="text"
+                  inputmode="decimal"
+                  pattern="[0-9]*"
                   step="0.01"
                   class="w-full pl-3 pr-8 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none font-mono font-bold"
                 />

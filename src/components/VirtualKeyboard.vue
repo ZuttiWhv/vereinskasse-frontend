@@ -1,6 +1,12 @@
 <template>
   <transition name="slide-up">
-    <div v-show="kbStore.isOpen" class="keyboard-container shadow-2xl">
+    <div
+      v-show="kbStore.isOpen"
+      :class="[
+        'keyboard-container shadow-2xl',
+        { 'is-numeric': kbStore.keyboardType === 'numeric' },
+      ]"
+    >
       <div class="flex justify-between items-center bg-gray-100 px-4 py-3 border-t border-gray-300">
         <div class="flex flex-col">
           <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest"
@@ -31,6 +37,17 @@ import { useKeyboardStore } from '@/stores/keyboard'
 const kbStore = useKeyboardStore()
 let keyboard: any = null
 
+watch(
+  () => kbStore.keyboardType,
+  (newType) => {
+    if (keyboard) {
+      keyboard.setOptions({
+        layoutName: newType,
+      })
+    }
+  },
+)
+
 onMounted(async () => {
   await nextTick()
 
@@ -57,7 +74,6 @@ onMounted(async () => {
           }
         },
 
-        // Verhindert, dass das Eingabefeld den Fokus verliert
         preventMouseDownDefault: true,
 
         layout: {
@@ -74,6 +90,13 @@ onMounted(async () => {
             'A S D F G H J K L Ö Ä',
             '{shift} Y X C V B N M ; :',
             '{numbers} {space} {ent}',
+          ],
+          numeric: [
+            '1 2 3',
+            '4 5 6',
+            '7 8 9',
+            '{backspace} 0 .', // Punkt statt Komma für HTML5 number inputs
+            '00 {ent}', // Doppel-Null für Preise
           ],
         },
 
@@ -129,6 +152,7 @@ const handleShift = () => {
   background: #f3f4f6;
   min-height: 280px;
   user-select: none;
+  transition: all 0.3s ease;
 }
 
 :deep(.simple-keyboard) {
@@ -167,5 +191,17 @@ const handleShift = () => {
 .slide-up-enter-from,
 .slide-up-leave-to {
   transform: translateY(100%);
+}
+
+.is-numeric {
+  max-width: 400px;
+  left: 50% !important;
+  transform: translateX(-50%);
+  border-radius: 20px 20px 0 0;
+}
+
+/* Numpad Tasten quadratischer machen */
+.numeric-mode :deep(.hg-button) {
+  height: 65px !important;
 }
 </style>

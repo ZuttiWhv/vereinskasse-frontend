@@ -9,13 +9,14 @@ export const useKeyboardStore = defineStore('keyboard', {
     isPhysicalMobile: /android|iphone|ipad|ipod|windows phone/i.test(
       navigator.userAgent.toLowerCase(),
     ),
+    keyboardType: 'default',
   }),
   actions: {
-    open(id: string, initialValue: string) {
+    open(id: string, initialValue: string, type: 'default' | 'numeric' = 'default') {
       if (this.isPhysicalMobile) return
-
+      this.keyboardType = type
       this.activeInputId = id
-      this.inputValue = initialValue
+      this.inputValue = String(initialValue)
       this.isOpen = true
     },
     close() {
@@ -28,8 +29,8 @@ export const useKeyboardStore = defineStore('keyboard', {
         const el = document.getElementById(this.activeInputId) as HTMLInputElement
         if (el) {
           el.value = newValue
+
           el.dispatchEvent(new Event('input', { bubbles: true }))
-          el.dispatchEvent(new Event('change', { bubbles: true }))
         }
       }
     },

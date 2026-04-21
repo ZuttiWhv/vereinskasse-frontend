@@ -120,8 +120,10 @@
               <input
                 v-model="displayPrice"
                 id="product-price"
-                @focus="kbStore.open('product-price', displayPrice)"
-                type="number"
+                @focus="kbStore.open('product-price', displayPrice, 'numeric')"
+                type="text"
+                inputmode="decimal"
+                pattern="[0-9]*"
                 step="0.01"
                 class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
               />
