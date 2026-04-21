@@ -120,7 +120,7 @@
               <input
                 v-model="displayPrice"
                 id="product-price"
-                @focus="kbStore.open('product-price', displayPrice, 'numeric')"
+                @focus="kbStore.open('product-price', String(displayPrice), 'numeric')"
                 type="text"
                 inputmode="decimal"
                 pattern="[0-9]*"

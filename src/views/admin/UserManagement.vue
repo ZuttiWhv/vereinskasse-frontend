@@ -246,7 +246,7 @@
           <div class="relative">
             <input
               id="depAmount"
-              @focus="kbStore.open('depAmount', depositAmount)"
+              @focus="kbStore.open('depAmount', String(depositAmount))"
               v-model="depositAmount"
               type="number"
               step="0.01"
