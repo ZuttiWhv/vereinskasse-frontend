@@ -190,10 +190,12 @@
   <footer class="bg-white py-6 border-t border-gray-200 mt-auto">
     <div class="max-w-7xl mx-auto px-4 text-center">
       <p class="text-gray-500 text-xs tracking-wide">
-        &copy; 2026 {{ settings.vereinName }} | <span class="font-semibold">Vereinskasse v2.0</span>
+        &copy; 2026 {{ settings.vereinName }} | <span class="font-semibold">Vereinskasse v0.3</span>
       </p>
     </div>
   </footer>
+
+  <VirtualKeyboard v-if="!kbStore.isPhysicalMobile" />
 </template>
 
 <script setup lang="ts">
@@ -201,6 +203,9 @@ import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 import apiClient from '@/api/client'
+import VirtualKeyboard from '@/components/VirtualKeyboard.vue' // Import
+import { useKeyboardStore } from '@/stores/keyboard'
+const kbStore = useKeyboardStore()
 
 const authStore = useAuthStore()
 const router = useRouter()

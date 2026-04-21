@@ -38,6 +38,7 @@
         </label>
         <input
           id="device-name"
+          @focus="kbStore.open('device-name', newDeviceName)"
           v-model="newDeviceName"
           type="text"
           placeholder="z.B. Kasse-Foyer oder Raspberry-Pi-1"
@@ -76,6 +77,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import apiClient from '@/api/client'
+import { useKeyboardStore } from '@/stores/keyboard'
+const kbStore = useKeyboardStore()
 
 const newDeviceName = ref('')
 const isGenerating = ref(false)

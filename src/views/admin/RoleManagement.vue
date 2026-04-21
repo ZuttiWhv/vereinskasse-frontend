@@ -75,6 +75,8 @@
             <label class="block text-sm font-medium text-gray-700 mb-1">Name der Rolle</label>
             <input
               v-model="formData.name"
+              id="role-name"
+              @focus="kbStore.open('role-name', formData.name)"
               type="text"
               placeholder="z.B. ROLE_KASSIERER"
               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
@@ -127,6 +129,8 @@
 import { ref, onMounted } from 'vue'
 import apiClient from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
+import { useKeyboardStore } from '@/stores/keyboard'
+const kbStore = useKeyboardStore()
 
 const authStore = useAuthStore()
 

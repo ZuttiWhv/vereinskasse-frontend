@@ -119,12 +119,16 @@
               type="text"
               placeholder="z.B. Vorstand, Gäste..."
               class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+              id="inputname"
+              @focus="kbStore.open('inputname', formData.name)"
             />
           </div>
 
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Beschreibung</label>
             <textarea
+              id="inputdescription"
+              @focus="kbStore.open('inputdescription', formData.description)"
               v-model="formData.description"
               rows="2"
               class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
@@ -152,6 +156,8 @@
               >
               <div class="relative">
                 <input
+                  id="inputlimit"
+                  @focus="kbStore.open('inputlimit', displayLimit)"
                   v-model="displayLimit"
                   type="number"
                   step="0.01"
@@ -197,6 +203,9 @@ import { ref, computed, onMounted } from 'vue'
 import apiClient from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 
+import { useKeyboardStore } from '@/stores/keyboard'
+
+const kbStore = useKeyboardStore()
 const authStore = useAuthStore()
 
 // --- STATE ---

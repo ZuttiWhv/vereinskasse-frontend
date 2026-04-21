@@ -5,6 +5,14 @@ import { useRouter } from 'vue-router'
 import apiClient from '@/api/client'
 import Numpad from '@/components/Numpad.vue' // Pfad anpassen
 
+import { useKeyboardStore } from '@/stores/keyboard'
+const kbStore = useKeyboardStore()
+
+// Hilfsfunktion zum Öffnen
+const openKb = (id, currentVal) => {
+  kbStore.open(id, currentVal)
+}
+
 const authStore = useAuthStore()
 const router = useRouter()
 const error = ref('')
@@ -161,7 +169,13 @@ onMounted(checkQuickLogin)
       <form v-else class="login-form" @submit.prevent="submit">
         <div class="input-group">
           <label>Nutzername</label>
-          <input v-model="form.username" placeholder="Dein Name" required />
+          <input
+            id="username-field"
+            v-model="form.username"
+            placeholder="Dein Name"
+            required
+            @focus="openKb('username-field', form.username)"
+          />
         </div>
         <div class="input-group">
           <label>Passwort</label>
@@ -171,6 +185,7 @@ onMounted(checkQuickLogin)
             placeholder="••••••••"
             required
             type="password"
+            @focus="openKb('password-field', form.password)"
           />
         </div>
         <button :disabled="authStore.isLoading" class="btn-login" type="submit">

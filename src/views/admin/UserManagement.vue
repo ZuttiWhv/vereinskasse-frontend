@@ -129,6 +129,8 @@
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Benutzername</label>
             <input
+              id="user-name"
+              @focus="kbStore.open('user-name', formData.username)"
               v-model="formData.username"
               type="text"
               class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
@@ -175,6 +177,8 @@
             <input
               v-model="formData.password"
               type="password"
+              id="user-password"
+              @focus="kbStore.open('user-password', formData.password)"
               class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -241,6 +245,8 @@
           >
           <div class="relative">
             <input
+              id="depAmount"
+              @focus="kbStore.open('depAmount', depositAmount)"
               v-model="depositAmount"
               type="number"
               step="0.01"
@@ -278,6 +284,8 @@
 import { ref, computed, onMounted } from 'vue'
 import apiClient from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
+import { useKeyboardStore } from '@/stores/keyboard'
+const kbStore = useKeyboardStore()
 
 const authStore = useAuthStore()
 
