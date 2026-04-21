@@ -8,8 +8,7 @@ import Numpad from '@/components/Numpad.vue' // Pfad anpassen
 import { useKeyboardStore } from '@/stores/keyboard'
 const kbStore = useKeyboardStore()
 
-// Hilfsfunktion zum Öffnen
-const openKb = (id, currentVal) => {
+const openKb = (id: string, currentVal: string) => {
   kbStore.open(id, currentVal)
 }
 

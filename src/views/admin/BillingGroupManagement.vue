@@ -157,7 +157,7 @@
               <div class="relative">
                 <input
                   id="inputlimit"
-                  @focus="kbStore.open('inputlimit', displayLimit, 'numeric')"
+                  @focus="kbStore.open('inputlimit', String(displayLimit), 'numeric')"
                   v-model="displayLimit"
                   type="text"
                   inputmode="decimal"
