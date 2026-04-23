@@ -48,8 +48,8 @@
                     <div
                       class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/tooltip:block w-64 bg-gray-800 text-white text-[11px] p-2 rounded shadow-lg z-10"
                     >
-                      Benutzer können optional eine 4-stellige PIN festlegen, um sich ohne Passwort
-                      an angemeldeten Geräten zu identifizieren.
+                      Benutzer können optional eine 4- bis 6-stellige PIN festlegen, um sich ohne
+                      Passwort an angemeldeten Geräten zu identifizieren.
                     </div>
                   </div>
                 </div>
@@ -67,6 +67,48 @@
                   class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
                 />
               </button>
+            </div>
+
+            <div class="pt-4 border-t border-gray-50">
+              <div class="flex items-center justify-between">
+                <div class="flex flex-col flex-grow">
+                  <div class="flex items-center gap-2">
+                    <span class="font-medium text-gray-900">Passwortloser Login (mTLS)</span>
+                    <span
+                      class="bg-blue-100 text-blue-700 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase"
+                      >Sicherheitskritisch</span
+                    >
+                  </div>
+                  <p class="text-xs text-gray-500">
+                    Ermöglicht den Login rein über das mTLS-Zertifikat ohne weitere Abfrage.
+                  </p>
+                </div>
+                <button
+                  @click="settings.passwordlessLogin = !settings.passwordlessLogin"
+                  :class="settings.passwordlessLogin ? 'bg-emerald-500' : 'bg-gray-300'"
+                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
+                >
+                  <span
+                    :class="settings.passwordlessLogin ? 'translate-x-6' : 'translate-x-1'"
+                    class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                  />
+                </button>
+              </div>
+
+              <div
+                v-if="settings.passwordlessLogin"
+                class="mt-3 p-3 bg-red-50 border border-red-100 rounded-lg"
+              >
+                <div class="flex gap-2 text-red-800 items-start">
+                  <span class="text-sm">⚠️</span>
+                  <p class="text-[11px] leading-relaxed">
+                    <strong>Warnung:</strong> Diese Funktion deaktiviert die Passwort-Hürde
+                    komplett. Stellen Sie sicher, dass nur vertrauenswürdige Endgeräte ein
+                    mTLS-Zertifikat erhalten. Die Funktion muss pro Benutzer explizit im
+                    Benutzerprofil freigeschaltet werden.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -113,7 +155,7 @@
               @focus="kbStore.open('name', settings.vereinName)"
               v-model="settings.vereinName"
               type="text"
-              class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+              class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
@@ -235,6 +277,7 @@ const settings = ref({
   logoPath: '',
   quickLogin: false,
   pinLogin: false,
+  passwordlessLogin: false, // Initialisierung des neuen Flags
 })
 
 const fetchSettings = async () => {
@@ -253,13 +296,12 @@ const getFullLogoUrl = (filename: string) => {
 
 const handleLogoUpload = async (event: Event) => {
   const target = event.target as HTMLInputElement
-  // 1. Wir holen uns die Datei in eine Konstante
   const file = target.files?.[0]
 
   if (!file) return
 
   const formData = new FormData()
-  formData.append('file', file) // Jetzt ist TS zufrieden
+  formData.append('file', file)
 
   uploading.value = true
   try {
@@ -271,7 +313,6 @@ const handleLogoUpload = async (event: Event) => {
     alert('Upload fehlgeschlagen.')
   } finally {
     uploading.value = false
-    // Optional: Input zurücksetzen, damit die gleiche Datei erneut gewählt werden kann
     target.value = ''
   }
 }
@@ -293,7 +334,6 @@ onMounted(fetchSettings)
 </script>
 
 <style scoped>
-/* Tooltip-Animation für weicheres Einblenden */
 .group\/tooltip:hover div {
   animation: fadeIn 0.2s ease-out;
 }

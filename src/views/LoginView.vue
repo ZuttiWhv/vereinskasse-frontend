@@ -3,7 +3,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 import apiClient from '@/api/client'
-import Numpad from '@/components/Numpad.vue' // Pfad anpassen
+import Numpad from '@/components/Numpad.vue'
 
 import { useKeyboardStore } from '@/stores/keyboard'
 const kbStore = useKeyboardStore()
@@ -21,8 +21,9 @@ const hasQuickLogin = ref(false)
 const currentLevel = ref<any>(null)
 const navigationHistory = ref<any[]>([])
 
-// PIN-Login States
+// Auth States
 const showPinModal = ref(false)
+const isLoggingIn = ref(false) // Status für automatischen Passwordless-Login
 const pinValue = ref('')
 const selectedUsername = ref('')
 
@@ -58,16 +59,31 @@ const goBack = () => {
 }
 
 /**
- * Kernlogik: Prüfen ob PIN möglich, sonst Passwort
+ * Kernlogik: Der Weg des geringsten Widerstands
+ * 1. Passwortlos (mTLS) ? -> Sofort Login
+ * 2. PIN möglich? -> Zeige Numpad
+ * 3. Sonst -> Manuelles Passwort
  */
 const selectUser = async (username: string) => {
   selectedUsername.value = username
   error.value = ''
+  isLoggingIn.value = true
 
   try {
-    // 1. Prüfen ob PIN-Login für diesen User & dieses Gerät möglich ist
+    // SCHRITT 1: Prüfen auf Passwortlosen Login (mTLS)
+    const { data: isPasswordlessPossible } = await apiClient.get(
+      `/auth/passwordless/available/${username}`,
+    )
+
+    if (isPasswordlessPossible) {
+      await handlePasswordlessLogin(username)
+      return
+    }
+
+    // SCHRITT 2: Prüfen ob PIN-Login möglich ist
     const { data: isPinPossible } = await apiClient.get(`/auth/pin/available/${username}`)
 
+    isLoggingIn.value = false
     if (isPinPossible) {
       pinValue.value = ''
       showPinModal.value = true
@@ -75,7 +91,19 @@ const selectUser = async (username: string) => {
       switchToManual(username)
     }
   } catch (e) {
-    // Falls mTLS fehlt oder Endpoint nicht erreichbar -> Fallback auf Passwort
+    // Fallback auf Passwort bei Fehlern (z.B. 403 weil kein Trusted Device)
+    isLoggingIn.value = false
+    switchToManual(username)
+  }
+}
+
+const handlePasswordlessLogin = async (username: string) => {
+  try {
+    // Ruft authStore.passwordlessLogin auf (muss dort POST /auth/passwordless/passwordless triggern)
+    await authStore.passwordlessLogin(username)
+    router.push('/')
+  } catch (e) {
+    isLoggingIn.value = false
     switchToManual(username)
   }
 }
@@ -84,37 +112,32 @@ const switchToManual = (username: string) => {
   form.username = username
   isManualMode.value = true
   showPinModal.value = false
-  setTimeout(() => document.getElementById('password-field')?.focus(), 50)
+  // Kleiner Delay damit das Input-Feld gerendert ist
+  setTimeout(() => {
+    const el = document.getElementById('password-field')
+    el?.focus()
+  }, 100)
 }
 
-/**
- * Führt den PIN-Login aus, sobald das Numpad "complete" meldet
- */
 const handlePinComplete = async (pin: string) => {
   error.value = ''
   try {
-    // Wir rufen die neue Methode im Store auf
-    // Diese kümmert sich um: Token speichern, Header setzen, Profil laden
     await authStore.pinLogin({
       username: selectedUsername.value,
       pin: pin,
     })
-
-    // Wenn wir hier ankommen, war alles erfolgreich (inkl. fetchProfile)
     showPinModal.value = false
     router.push('/')
   } catch (e: any) {
-    pinValue.value = '' // PIN zurücksetzen bei Fehler
-
+    pinValue.value = ''
     if (e.response?.status === 429) {
       error.value = 'Zu viele Versuche. Bitte warten.'
-    } else if (e.response?.status === 403) {
-      error.value = 'Gerät nicht autorisiert oder PIN falsch.'
     } else {
-      error.value = 'Anmeldung fehlgeschlagen.'
+      error.value = 'PIN falsch oder Anmeldung fehlgeschlagen.'
     }
   }
 }
+
 async function submit() {
   try {
     await authStore.login(form)
@@ -134,6 +157,11 @@ onMounted(checkQuickLogin)
       <p class="subtitle">
         {{ isManualMode ? 'Bitte melde dich an' : 'Schnellauswahl nutzen' }}
       </p>
+
+      <div v-if="isLoggingIn" class="auto-login-overlay">
+        <div class="spinner"></div>
+        <p>Prüfe Identität...</p>
+      </div>
 
       <div v-if="!isManualMode && hasQuickLogin" class="quick-login-content">
         <div class="tree-nav">
@@ -208,16 +236,54 @@ onMounted(checkQuickLogin)
 
         <Numpad v-model="pinValue" :maxLength="6" @complete="handlePinComplete" />
 
-        <button class="btn-abort" @click="switchToManual(selectedUsername)">
-          Doch mit Passwort anmelden
-        </button>
-        <button class="btn-close" @click="showPinModal = false">Abbrechen</button>
+        <div class="pin-footer-actions">
+          <button class="btn-abort" @click="switchToManual(selectedUsername)">
+            Stattdessen mit Passwort anmelden
+          </button>
+          <button class="btn-close" @click="showPinModal = false">Abbrechen</button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+/* Ergänzende Styles für automatischen Login-Status */
+.auto-login-overlay {
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  color: #4a5568;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #3182ce;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.pin-footer-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+/* Bestehende Styles */
 .pin-overlay {
   position: fixed;
   inset: 0;
@@ -251,7 +317,6 @@ onMounted(checkQuickLogin)
 }
 
 .btn-abort {
-  margin-top: 1.5rem;
   font-size: 0.85rem;
   color: #3182ce;
   background: none;
@@ -261,12 +326,12 @@ onMounted(checkQuickLogin)
 }
 
 .btn-close {
-  display: block;
-  width: 100%;
-  margin-top: 1rem;
   padding: 0.5rem;
   color: #a0aec0;
   font-size: 0.8rem;
+  background: none;
+  border: none;
+  cursor: pointer;
 }
 
 .animate-pop {
@@ -288,7 +353,7 @@ onMounted(checkQuickLogin)
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 20vh; /* Exakt dein Originalwert */
+  min-height: 20vh;
   padding: 1rem;
 }
 
@@ -300,14 +365,10 @@ onMounted(checkQuickLogin)
   width: 100%;
   max-width: 400px;
   text-align: center;
-  display: flex;
-  flex-direction: column;
 }
 
-/* Der Baum darf scrollen, damit die Karte nicht nach unten abhaut */
-
 .selection-scroll-area {
-  max-height: 250px; /* Begrenzt die Höhe der Schnellauswahl */
+  max-height: 250px;
   overflow-y: auto;
   margin: 1rem 0;
   padding-right: 5px;
@@ -336,8 +397,6 @@ onMounted(checkQuickLogin)
   margin-bottom: 4px;
   font-size: 1.2rem;
 }
-
-/* Originale Form Styles (Unverändert) */
 
 .login-form {
   display: flex;
@@ -375,26 +434,22 @@ input {
   cursor: pointer;
 }
 
-/* Header & Subtitle */
 h1 {
   margin-bottom: 0.5rem;
   color: #2d3748;
   font-size: 1.8rem;
 }
-
 .subtitle {
   color: #718096;
   margin-bottom: 1rem;
   font-size: 0.9rem;
 }
-
 .tree-nav {
   display: flex;
   gap: 10px;
   align-items: center;
   font-size: 0.85rem;
 }
-
 .back-link {
   background: none;
   border: none;
@@ -402,13 +457,11 @@ h1 {
   cursor: pointer;
   padding: 0;
 }
-
 .mode-switch {
   margin-top: 1.5rem;
   padding-top: 1rem;
   border-top: 1px solid #edf2f7;
 }
-
 .btn-switch {
   background: none;
   border: none;
@@ -417,7 +470,6 @@ h1 {
   cursor: pointer;
   text-decoration: underline;
 }
-
 .error-msg {
   color: #e53e3e;
   background: #fff5f5;
