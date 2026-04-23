@@ -8,6 +8,7 @@ interface UserProfile {
   username: string
   balance: number
   pinEnabled: boolean
+  passwordlessLoginEnabled: boolean // NEU: Damit das Profil vollständig ist
   roles: string[]
 }
 
@@ -22,7 +23,6 @@ export const useAuthStore = defineStore('auth', {
 
   getters: {
     isAuthenticated: (state) => !!state.accessToken,
-    // Prüft, ob der User eine oder mehrere Berechtigungen hat
     hasAuthority: (state) => (required: string | string[]) => {
       if (!state.authorities) return false
       if (Array.isArray(required)) {
@@ -34,41 +34,35 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
+    /**
+     * Standard Login mit Passwort
+     */
     async login(credentials: { username: string; password: string }) {
+      this.isLoading = true
       try {
         const { data } = await apiClient.post<LoginResponse>('/auth/login', credentials)
-
-        // 1. Token im State und LocalStorage setzen
         this.setTokens(data)
-
-        // 2. WICHTIG: Den Header für den API-Client sofort setzen,
-        // damit fetchProfile autorisiert ist!
         apiClient.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`
-
-        // 3. Profil laden (beinhaltet Authorities)
         await this.fetchProfile()
-
-        return true // Login erfolgreich
+        return true
       } catch (error) {
         console.error('Login fehlgeschlagen:', error)
-        throw error // Fehler an die LoginView weitergeben
+        throw error
       } finally {
-        this.isLoading = false // Beenden (egal ob Erfolg oder Fehler)
+        this.isLoading = false
       }
     },
 
+    /**
+     * Login via PIN
+     */
     async pinLogin(credentials: { username: string; pin: string }) {
-      this.isLoading = true // Starten
+      this.isLoading = true
       try {
-        // Der API-Aufruf an deinen neuen PIN-Endpunkt
         const { data } = await apiClient.post<LoginResponse>('/auth/pin/login', credentials)
-
         this.setTokens(data)
-
         apiClient.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`
-
         await this.fetchProfile()
-
         return true
       } catch (error) {
         console.error('PIN-Login fehlgeschlagen:', error)
@@ -78,7 +72,30 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    // Der Router sucht nach dieser Methode beim Page-Refresh
+    /**
+     * NEU: Passwortloser Login (mTLS)
+     * Wird von der LoginView aufgerufen, wenn mTLS verfügbar ist.
+     */
+    async passwordlessLogin(username: string) {
+      this.isLoading = true
+      try {
+        // Entspricht dem Endpunkt in deinem PasswordlessAuthController
+        const { data } = await apiClient.post<LoginResponse>('/auth/passwordless/passwordless', {
+          username: username,
+        })
+
+        this.setTokens(data)
+        apiClient.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`
+        await this.fetchProfile()
+        return true
+      } catch (error) {
+        console.error('Passwortloser Login fehlgeschlagen:', error)
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
     async fetchAuthorities() {
       if (this.isAuthenticated) {
         await this.fetchProfile()
@@ -91,13 +108,13 @@ export const useAuthStore = defineStore('auth', {
       try {
         const { data } = await apiClient.get('/api/users/me')
 
-        // Wir speichern die Authorities und das User-Objekt getrennt
         this.authorities = data.authorities || []
         this.user = {
           id: data.id,
           username: data.username,
           balance: data.balance,
           pinEnabled: data.pinEnabled,
+          passwordlessLoginEnabled: data.passwordlessLoginEnabled, // NEU: Mapping ergänzt
           roles: data.roles || [],
         }
 
@@ -105,7 +122,6 @@ export const useAuthStore = defineStore('auth', {
         localStorage.setItem('authorities', JSON.stringify(this.authorities))
       } catch (error) {
         console.error('Profil-Ladefehler:', error)
-        // Falls der Token abgelaufen ist, hier ausloggen
         if ((error as any).response?.status === 401) {
           this.logout()
         }
@@ -128,29 +144,24 @@ export const useAuthStore = defineStore('auth', {
       localStorage.removeItem('refresh_token')
       localStorage.removeItem('user')
       localStorage.removeItem('authorities')
-      // Wir verzichten hier auf window.location.href, damit der Router den Redirect steuert
     },
+
     async refreshTokens(): Promise<string> {
       if (!this.refreshToken) {
         throw new Error('Kein Refresh-Token vorhanden')
       }
 
       try {
-        // Achtung: Hier nutzen wir axios direkt statt apiClient,
-        // um Endlosschleifen bei 401 zu vermeiden!
         const { data } = await axios.post<LoginResponse>('/auth/refresh', {
           refreshToken: this.refreshToken,
         })
 
-        // Neue Tokens speichern (setTokens hast du ja schon im Store)
         this.setTokens(data)
-
-        // Auch den Header für zukünftige Anfragen im apiClient aktualisieren
         apiClient.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`
-
         return data.accessToken
       } catch (error) {
         console.error('Refresh fehlgeschlagen:', error)
+        this.logout() // Wichtig: Bei gescheitertem Refresh ausloggen
         throw error
       }
     },
