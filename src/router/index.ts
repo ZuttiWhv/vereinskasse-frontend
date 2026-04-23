@@ -58,6 +58,29 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, requiredAuthorities: 'WRITE_USER' },
   },
   {
+    path: '/admin/billinggroups',
+    name: 'billinggroups-management',
+    component: () => import('@/views/admin/BillingGroupManagement.vue'),
+    meta: { requiresAuth: true, requiredAuthorities: 'WRITE_BILLING_GROUP' },
+  },
+  {
+    path: '/profile',
+    name: 'profile-settings',
+    component: () => import('@/views/ProfileSettings.vue'),
+  },
+  {
+    path: '/admin/ous',
+    name: 'organisational-units-management',
+    component: () => import('@/views/admin/OrganisationalUnitsManagement.vue'),
+    meta: { requiresAuth: true, requiredAuthorities: 'WRITE_OUS' },
+  },
+  {
+    path: '/admin/devices',
+    name: 'device-management',
+    component: () => import('@/views/admin/CertificateManagement.vue'),
+    meta: { requiresAuth: true, requiredAuthorities: 'WRITE_USER' },
+  },
+  {
     path: '/sales-history',
     name: 'sales-history',
     component: () => import('@/views/SalesHistory.vue'),

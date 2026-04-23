@@ -18,12 +18,12 @@ export default defineConfig(({ command, mode }): UserConfig => {
         command === 'serve'
           ? {
               '/auth': {
-                target: 'http://localhost:8080',
+                target: 'https://localhost:8080',
                 changeOrigin: true,
                 secure: false,
               },
               '/api': {
-                target: 'http://localhost:8080',
+                target: 'https://localhost:8080',
                 changeOrigin: true,
                 secure: false,
               },

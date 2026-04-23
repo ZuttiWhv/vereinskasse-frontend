@@ -8,6 +8,70 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div class="md:col-span-2 space-y-6">
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
+          <h2 class="text-lg font-semibold border-b pb-2 text-emerald-700">Login-Funktionen</h2>
+
+          <div class="space-y-6">
+            <div class="flex items-center justify-between group">
+              <div class="flex flex-col flex-grow">
+                <div class="flex items-center gap-2">
+                  <span class="font-medium text-gray-700">Vereinfachtes Login (Quick-Login)</span>
+                  <div class="relative flex items-center group/tooltip">
+                    <span class="text-gray-400 cursor-help text-sm">ⓘ</span>
+                    <div
+                      class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/tooltip:block w-64 bg-gray-800 text-white text-[11px] p-2 rounded shadow-lg z-10"
+                    >
+                      Erlaubt zertifizierten Geräten (mTLS), eine Liste der Abteilungen und
+                      Benutzernamen zur schnellen Auswahl anzuzeigen.
+                    </div>
+                  </div>
+                </div>
+                <p class="text-xs text-gray-500">Ideal für Terminals am Verkaufsstand.</p>
+              </div>
+              <button
+                @click="settings.quickLogin = !settings.quickLogin"
+                :class="settings.quickLogin ? 'bg-emerald-500' : 'bg-gray-300'"
+                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
+              >
+                <span
+                  :class="settings.quickLogin ? 'translate-x-6' : 'translate-x-1'"
+                  class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                />
+              </button>
+            </div>
+
+            <div class="flex items-center justify-between">
+              <div class="flex flex-col flex-grow">
+                <div class="flex items-center gap-2">
+                  <span class="font-medium text-gray-700">PIN-Login erlauben</span>
+                  <div class="relative flex items-center group/tooltip">
+                    <span class="text-gray-400 cursor-help text-sm">ⓘ</span>
+                    <div
+                      class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/tooltip:block w-64 bg-gray-800 text-white text-[11px] p-2 rounded shadow-lg z-10"
+                    >
+                      Benutzer können optional eine 4-stellige PIN festlegen, um sich ohne Passwort
+                      an angemeldeten Geräten zu identifizieren.
+                    </div>
+                  </div>
+                </div>
+                <p class="text-xs text-gray-500">
+                  Muss zusätzlich vom Benutzer in seinem Profil aktiviert werden.
+                </p>
+              </div>
+              <button
+                @click="settings.pinLogin = !settings.pinLogin"
+                :class="settings.pinLogin ? 'bg-emerald-500' : 'bg-gray-300'"
+                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
+              >
+                <span
+                  :class="settings.pinLogin ? 'translate-x-6' : 'translate-x-1'"
+                  class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
           <h2 class="text-lg font-semibold border-b pb-2 text-emerald-700">Vereinslogo</h2>
 
           <div class="flex items-center gap-6">
@@ -45,6 +109,8 @@
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Vereinsname</label>
             <input
+              id="name"
+              @focus="kbStore.open('name', settings.vereinName)"
               v-model="settings.vereinName"
               type="text"
               class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
@@ -155,6 +221,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import apiClient from '@/api/client'
+import { useKeyboardStore } from '@/stores/keyboard'
+const kbStore = useKeyboardStore()
 
 const isSaving = ref(false)
 const uploading = ref(false)
@@ -163,8 +231,10 @@ const settings = ref({
   vereinName: 'Vereinskasse',
   primaryColor: '#2563eb',
   secondaryColor: '#1e40af',
-  navTextColor: '#ffffff', // Hinzugefügt
+  navTextColor: '#ffffff',
   logoPath: '',
+  quickLogin: false,
+  pinLogin: false,
 })
 
 const fetchSettings = async () => {
@@ -183,19 +253,15 @@ const getFullLogoUrl = (filename: string) => {
 
 const handleLogoUpload = async (event: Event) => {
   const target = event.target as HTMLInputElement
-  if (!target.files || target.files.length === 0) return
+  // 1. Wir holen uns die Datei in eine Konstante
+  const file = target.files?.[0]
 
-  const file = target.files[0]
+  if (!file) return
+
   const formData = new FormData()
+  formData.append('file', file) // Jetzt ist TS zufrieden
 
-  if (file) {
-    formData.append('file', file)
-    uploading.value = true
-  } else {
-    console.error('Keine Datei ausgewählt!')
-    return
-  }
-
+  uploading.value = true
   try {
     const { data } = await apiClient.post('/api/media/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -205,6 +271,8 @@ const handleLogoUpload = async (event: Event) => {
     alert('Upload fehlgeschlagen.')
   } finally {
     uploading.value = false
+    // Optional: Input zurücksetzen, damit die gleiche Datei erneut gewählt werden kann
+    target.value = ''
   }
 }
 
@@ -212,6 +280,7 @@ const saveSettings = async () => {
   isSaving.value = true
   try {
     await apiClient.put('/api/settings', settings.value)
+    // Damit alle Navigationsleisten etc. die Änderungen sofort übernehmen
     globalThis.location.reload()
   } catch (error) {
     alert('Fehler beim Speichern.')
@@ -222,3 +291,21 @@ const saveSettings = async () => {
 
 onMounted(fetchSettings)
 </script>
+
+<style scoped>
+/* Tooltip-Animation für weicheres Einblenden */
+.group\/tooltip:hover div {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 4px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+</style>

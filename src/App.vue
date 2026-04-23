@@ -22,6 +22,7 @@
             <router-link to="/" class="nav-link" active-class="nav-link-active"
               >Dashboard</router-link
             >
+
             <router-link
               v-if="authStore.hasAuthority('READ_OWN_SALES')"
               to="/sales-history"
@@ -33,34 +34,27 @@
 
             <div
               v-if="isAdmin"
-              class="relative ml-2"
+              class="relative ml-2 dropdown-container"
               @mouseenter="isAdminMenuOpen = true"
               @mouseleave="isAdminMenuOpen = false"
             >
               <button
-                @click="isAdminMenuOpen = !isAdminMenuOpen"
-                class="nav-link flex items-center space-x-1 bg-white/10 hover:bg-white/20 px-3 py-2 rounded-md"
+                class="nav-link flex items-center space-x-1 bg-white/10 hover:bg-white/20 px-3 py-2 rounded-md transition-colors"
               >
                 <span>Verwaltung</span>
                 <span
-                  class="text-xs opacity-50 transition-transform"
+                  class="text-[10px] opacity-60 transition-transform duration-200"
                   :class="{ 'rotate-180': isAdminMenuOpen }"
                   >▼</span
                 >
               </button>
 
               <div
-                class="absolute right-0 w-56 bg-white rounded-lg shadow-xl py-2 text-gray-800 border border-gray-100 transition-all duration-200"
-                :class="[
-                  isAdminMenuOpen
-                    ? 'block opacity-100 translate-y-0'
-                    : 'hidden opacity-0 -translate-y-2',
-                ]"
+                class="dropdown-menu right-0 w-56 bg-white rounded-lg shadow-xl py-2 text-gray-800 border border-gray-100"
+                :class="{ 'is-active': isAdminMenuOpen }"
               >
-                <div class="absolute -top-2 left-0 right-0 h-2"></div>
-
                 <router-link
-                  v-if="authStore.hasAuthority(['WRITE_CATEGORY'])"
+                  v-if="authStore.hasAuthority('WRITE_CATEGORY')"
                   to="/admin/categories"
                   class="drop-item"
                   @click="isAdminMenuOpen = false"
@@ -74,11 +68,32 @@
                   >Rollen & Rechte</router-link
                 >
                 <router-link
+                  v-if="authStore.hasAuthority('WRITE_OUS')"
+                  to="/admin/ous"
+                  class="drop-item"
+                  @click="isAdminMenuOpen = false"
+                  >Benutzerorganisation</router-link
+                >
+                <router-link
                   v-if="authStore.hasAuthority('WRITE_PRODUCT')"
                   to="/admin/products"
                   class="drop-item"
                   @click="isAdminMenuOpen = false"
                   >Produkte</router-link
+                >
+                <router-link
+                  v-if="authStore.hasAuthority('WRITE_BILLING_GROUP')"
+                  to="/admin/billinggroups"
+                  class="drop-item"
+                  @click="isAdminMenuOpen = false"
+                  >Abrechnungsgruppen</router-link
+                >
+                <router-link
+                  v-if="authStore.hasAuthority('WRITE_DEVICE')"
+                  to="/admin/devices"
+                  class="drop-item"
+                  @click="isAdminMenuOpen = false"
+                  >Geräteverwaltung</router-link
                 >
                 <router-link
                   v-if="authStore.hasAuthority('WRITE_USER')"
@@ -100,26 +115,64 @@
                   to="/admin/settings"
                   class="drop-item"
                   @click="isAdminMenuOpen = false"
-                  >⚙️ Design-Setup</router-link
+                  >⚙️ Einstellungen</router-link
                 >
               </div>
             </div>
 
-            <div class="flex items-center space-x-3 ml-4">
-              <div class="balance-badge whitespace-nowrap">
-                {{ formatCurrency(authStore.user?.balance ?? 0) }}
-              </div>
+            <div
+              class="relative ml-2 dropdown-container"
+              @mouseenter="isUserMenuOpen = true"
+              @mouseleave="isUserMenuOpen = false"
+            >
               <button
-                @click="handleLogout"
-                class="p-2 hover:bg-red-600 rounded-full transition-colors title='Abmelden'"
+                class="flex items-center space-x-3 bg-black/20 hover:bg-black/30 px-3 py-1.5 rounded-full border border-white/10 transition-colors"
               >
-                🚪
+                <div class="flex flex-col items-end leading-tight hidden sm:flex">
+                  <span class="text-[10px] font-bold opacity-70 uppercase tracking-widest"
+                    >Saldo</span
+                  >
+                  <span class="text-sm font-mono font-bold">{{
+                    formatCurrency(authStore.user?.balance ?? 0)
+                  }}</span>
+                </div>
+                <div
+                  class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-lg border border-white/20"
+                >
+                  👤
+                </div>
               </button>
+
+              <div
+                class="dropdown-menu right-0 w-48 bg-white rounded-lg shadow-xl py-2 text-gray-800 border border-gray-100"
+                :class="{ 'is-active': isUserMenuOpen }"
+              >
+                <div class="px-4 py-2 border-b mb-1">
+                  <p class="text-xs text-gray-400 font-semibold uppercase">User</p>
+                  <p class="text-sm font-bold truncate">{{ authStore.user?.username }}</p>
+                </div>
+                <router-link
+                  to="/profile"
+                  class="drop-item flex items-center space-x-2"
+                  @click="isUserMenuOpen = false"
+                >
+                  <span>⚙️</span>
+                  <span>Mein Profil</span>
+                </router-link>
+              </div>
             </div>
+
+            <button
+              @click="handleLogout"
+              class="ml-2 p-2.5 bg-red-500/20 hover:bg-red-600 text-white rounded-full transition-all duration-200 border border-white/10 group"
+              title="Sofort abmelden"
+            >
+              <span class="group-hover:scale-110 block transition-transform">🚪</span>
+            </button>
           </template>
 
           <template v-else>
-            <router-link to="/login" class="nav-link">Login</router-link>
+            <router-link to="/login" class="nav-link bg-white/10">Login</router-link>
           </template>
         </div>
       </div>
@@ -136,11 +189,13 @@
 
   <footer class="bg-white py-6 border-t border-gray-200 mt-auto">
     <div class="max-w-7xl mx-auto px-4 text-center">
-      <p class="text-gray-500 text-xs">
-        &copy; 2026 {{ settings.vereinName }} via Vereinskasse | Dein Durst, dein Verein.
+      <p class="text-gray-500 text-xs tracking-wide">
+        &copy; 2026 {{ settings.vereinName }} | <span class="font-semibold">Vereinskasse v0.3</span>
       </p>
     </div>
   </footer>
+
+  <VirtualKeyboard v-if="!kbStore.isPhysicalMobile" />
 </template>
 
 <script setup lang="ts">
@@ -148,24 +203,26 @@ import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 import apiClient from '@/api/client'
+import VirtualKeyboard from '@/components/VirtualKeyboard.vue' // Import
+import { useKeyboardStore } from '@/stores/keyboard'
+const kbStore = useKeyboardStore()
 
 const authStore = useAuthStore()
 const router = useRouter()
 
-// --- SETTINGS LOGIK ---
 const settings = ref({
   primaryColor: '#2563eb',
   secondaryColor: '#1e40af',
-  navTextColor: '#ffffff', // WICHTIG: Hier ergänzt
+  navTextColor: '#ffffff',
   vereinName: 'Vereinskasse',
   logoPath: '',
 })
 
 const isAdminMenuOpen = ref(false)
+const isUserMenuOpen = ref(false)
 
 const logoUrl = computed(() => {
   if (!settings.value.logoPath) return ''
-  // Sicherstellen, dass keine doppelten Slashes entstehen
   const baseUrl = apiClient.defaults.baseURL?.replace(/\/$/, '') || ''
   return `${baseUrl}/api/media/${settings.value.logoPath}?width=100`
 })
@@ -173,24 +230,17 @@ const logoUrl = computed(() => {
 const fetchSettings = async () => {
   try {
     const { data } = await apiClient.get('/api/settings')
-
-    // DER ENTSCHEIDENDE FIX: Die Daten müssen in das ref geschrieben werden!
     settings.value = data
-
-    // CSS Variablen für das globale Styling setzen
     const root = document.documentElement
     root.style.setProperty('--primary-color', data.primaryColor)
     root.style.setProperty('--secondary-color', data.secondaryColor)
     root.style.setProperty('--nav-text-color', data.navTextColor)
-
-    // Seitentitel im Browsertab anpassen
     document.title = data.vereinName
   } catch (error) {
-    console.error('Konnte Einstellungen nicht laden, nutze Defaults', error)
+    console.error('Settings load fail', error)
   }
 }
 
-// Kleine Hilfsvariable für das Template
 const isAdmin = computed(() => {
   return authStore.hasAuthority([
     'WRITE_CATEGORY',
@@ -202,8 +252,9 @@ const isAdmin = computed(() => {
   ])
 })
 
-// --- STANDARD LOGIK ---
 const handleLogout = () => {
+  isUserMenuOpen.value = false
+  isAdminMenuOpen.value = false
   authStore.logout()
   router.push('/login')
 }
@@ -219,89 +270,100 @@ onMounted(fetchSettings)
 </script>
 
 <style>
-/* CSS VARIABLEN & GLOBALER RESET */
+/* CSS VARIABLEN */
 :root {
   --primary-color: #2563eb;
   --secondary-color: #1e40af;
   --nav-text-color: #ffffff;
 }
 
+/* NAVBAR BASIS */
 .custom-nav {
   background-color: var(--primary-color);
-  color: var(--nav-text-color) !important; /* Wendet die Farbe auf die Nav an */
 }
 
-body {
-  margin: 0;
-  padding: 0;
+/* DROPDOWN LOGIK */
+.dropdown-container {
+  position: relative;
 }
 
-/* Ergänze diese Klassen für das Dropdown */
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  margin-top: 0.5rem;
+  z-index: 100;
+  display: none;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: all 0.2s ease-out;
+  pointer-events: none;
+}
+
+.dropdown-menu.is-active {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* Brücke für Hover-Stabilität */
+.dropdown-container::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 0.6rem;
+}
+
+/* ITEMS */
+.nav-link {
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--nav-text-color);
+  transition: background 0.2s;
+}
+
+.nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.nav-link-active {
+  background-color: rgba(0, 0, 0, 0.2) !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
 .drop-item {
   display: block;
   padding: 0.75rem 1rem;
   font-size: 0.875rem;
   color: #374151;
-  transition: background-color 0.2s;
+  text-decoration: none;
+  transition: all 0.15s;
 }
 
 .drop-item:hover {
-  background-color: #f3f4f6;
+  background-color: #f8fafc;
   color: var(--primary-color);
-}
-
-.nav-link-active {
-  background-color: rgba(255, 255, 255, 0.2);
-}
-
-.nav-link {
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition: all 0.2s;
-  color: var(--nav-text-color);
-}
-
-.nav-link:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.nav-link-active {
-  background-color: rgba(0, 0, 0, 0.2) !important;
-  box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
-}
-
-.balance-badge {
-  background-color: rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  padding: 0.375rem 1rem;
-  border-radius: 9999px;
-  font-size: 0.875rem;
-  font-weight: 700;
-  box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05);
-}
-
-/* ÜBERSCHREIBEN VON TAILWIND FARBEN WO NÖTIG */
-.text-blue-600 {
-  color: var(--primary-color) !important;
-}
-.bg-blue-600 {
-  background-color: var(--primary-color) !important;
-}
-.bg-blue-500 {
-  background-color: var(--primary-color) !important;
-  opacity: 0.9;
+  padding-left: 1.25rem;
 }
 
 /* TRANSITIONS */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.2s ease;
+  transition: opacity 0.15s ease;
 }
-
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+/* SCROLLBAR FIX */
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 </style>

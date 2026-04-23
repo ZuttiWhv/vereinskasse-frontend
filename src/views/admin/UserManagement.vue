@@ -3,7 +3,7 @@
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
       <div>
         <h1 class="text-2xl font-bold text-gray-800">Benutzerverwaltung</h1>
-        <p class="text-sm text-gray-500">Verwalte Mitglieder, Rollen und Guthaben.</p>
+        <p class="text-sm text-gray-500">Verwalte Mitglieder, Rollen, OUs und Guthaben.</p>
       </div>
 
       <div class="flex flex-col sm:flex-row w-full md:w-auto gap-3">
@@ -35,6 +35,7 @@
               class="bg-gray-50 border-b border-gray-100 text-gray-600 text-sm uppercase font-bold"
             >
               <th class="px-6 py-4">Benutzername</th>
+              <th class="px-6 py-4">Abrechnung / Abteilung</th>
               <th class="px-6 py-4">Rollen</th>
               <th class="px-6 py-4 text-right">Guthaben</th>
               <th class="px-6 py-4 text-right">Aktionen</th>
@@ -44,6 +45,20 @@
             <tr v-for="user in filteredUsers" :key="user.id" class="hover:bg-gray-50/50 transition">
               <td class="px-6 py-4">
                 <div class="font-bold text-gray-900">{{ user.username }}</div>
+              </td>
+              <td class="px-6 py-4">
+                <div class="flex flex-col gap-1">
+                  <span
+                    class="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded border border-purple-100 w-fit"
+                  >
+                    💰 {{ user.billingGroupName || 'Keine Abrechnungsgruppe' }}
+                  </span>
+                  <span
+                    class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 w-fit"
+                  >
+                    🏢 {{ user.orgUnitName || 'Keine Abteilung' }}
+                  </span>
+                </div>
               </td>
               <td class="px-6 py-4">
                 <div class="flex flex-wrap gap-1">
@@ -110,15 +125,51 @@
             &times;
           </button>
         </div>
-        <div class="p-6 space-y-4">
+        <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Benutzername</label>
             <input
+              id="user-name"
+              @focus="kbStore.open('user-name', formData.username)"
               v-model="formData.username"
               type="text"
               class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1"
+              >Abteilung / OU (für Quick-Login)</label
+            >
+            <select
+              v-model="formData.orgUnitId"
+              class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+            >
+              <option :value="null">-- Keine Abteilung --</option>
+              <option v-for="unit in orgUnits" :key="unit.id" :value="unit.id">
+                {{ unit.name }}
+              </option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Abrechnungsgruppe</label>
+            <select
+              v-model="formData.billingGroupId"
+              class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option :value="null" disabled>Bitte Gruppe wählen...</option>
+              <option v-for="group in billingGroups" :key="group.id" :value="group.id">
+                {{ group.name }}
+                {{
+                  group.allowNegativeBalance
+                    ? '(Dispo: ' + group.creditLimit / 100 + '€)'
+                    : '(Nur Guthaben)'
+                }}
+              </option>
+            </select>
+          </div>
+
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">{{
               isEditing ? 'Neues Passwort (optional)' : 'Passwort'
@@ -126,9 +177,12 @@
             <input
               v-model="formData.password"
               type="password"
+              id="user-password"
+              @focus="kbStore.open('user-password', formData.password)"
               class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
+
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Rollen zuweisen</label>
             <div
@@ -191,6 +245,8 @@
           >
           <div class="relative">
             <input
+              id="depAmount"
+              @focus="kbStore.open('depAmount', String(depositAmount))"
               v-model="depositAmount"
               type="number"
               step="0.01"
@@ -228,17 +284,20 @@
 import { ref, computed, onMounted } from 'vue'
 import apiClient from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
+import { useKeyboardStore } from '@/stores/keyboard'
+const kbStore = useKeyboardStore()
 
 const authStore = useAuthStore()
 
 // --- ZUSTAND (STATE) ---
 const users = ref<any[]>([])
 const roles = ref<any[]>([])
+const billingGroups = ref<any[]>([])
+const orgUnits = ref<any[]>([]) // NEU: Organisationseinheiten
 const searchQuery = ref('')
 const showModal = ref(false)
 const isEditing = ref(false)
 
-// NEU: Deposit State
 const showDepositModal = ref(false)
 const depositAmount = ref<number>(0)
 const selectedUserForDeposit = ref<any>(null)
@@ -248,9 +307,11 @@ const formData = ref({
   username: '',
   password: '',
   roleIds: [] as number[],
+  billingGroupId: null as number | null,
+  orgUnitId: null as number | null, // NEU
 })
 
-// --- COMPUTED (SORTIERUNG & SUCHE) ---
+// --- COMPUTED ---
 const filteredUsers = computed(() => {
   const filtered = users.value.filter((user) =>
     user.username.toLowerCase().includes(searchQuery.value.toLowerCase()),
@@ -261,11 +322,14 @@ const filteredUsers = computed(() => {
 })
 
 const isFormValid = computed(() => {
-  const basic = formData.value.username.length >= 3 && formData.value.roleIds.length > 0
+  const basic =
+    formData.value.username.length >= 3 &&
+    formData.value.roleIds.length > 0 &&
+    formData.value.billingGroupId !== null
   return isEditing.value ? basic : basic && formData.value.password.length >= 4
 })
 
-// --- AKTIONEN (LOGIK) ---
+// --- AKTIONEN ---
 const fetchUsers = async () => {
   try {
     const { data } = await apiClient.get('/api/users')
@@ -284,7 +348,25 @@ const fetchRoles = async () => {
   }
 }
 
-// NEU: Einzahlungs-Logik
+const fetchBillingGroups = async () => {
+  try {
+    const { data } = await apiClient.get('/api/billing-groups')
+    billingGroups.value = data
+  } catch (error) {
+    console.error('Fehler beim Laden der Abrechnungsgruppen', error)
+  }
+}
+
+const fetchOrgUnits = async () => {
+  try {
+    // Wir nutzen hier die flache Liste für das Dropdown
+    const { data } = await apiClient.get('/api/org-units')
+    orgUnits.value = data.sort((a: any, b: any) => a.name.localeCompare(b.name))
+  } catch (error) {
+    console.error('Fehler beim Laden der OUs', error)
+  }
+}
+
 const openDepositModal = (user: any) => {
   selectedUserForDeposit.value = user
   depositAmount.value = 0
@@ -293,19 +375,13 @@ const openDepositModal = (user: any) => {
 
 const handleDeposit = async () => {
   if (depositAmount.value <= 0 || !selectedUserForDeposit.value) return
-
   try {
     const amountInCents = Math.round(depositAmount.value * 100)
     await apiClient.post(`/api/users/${selectedUserForDeposit.value.id}/deposit`, amountInCents)
-
-    // 1. Die Liste der User in der Tabelle aktualisieren (damit der Kassenwart sieht, dass es geklappt hat)
     await fetchUsers()
-
-    // 2. NEU: Wenn der Kassenwart für SICH SELBST eingezahlt hat, die Menüleiste updaten
     if (selectedUserForDeposit.value.id === authStore.user?.id) {
       await authStore.fetchProfile()
     }
-
     showDepositModal.value = false
     depositAmount.value = 0
   } catch (error: any) {
@@ -322,10 +398,20 @@ const openModal = (user: any = null) => {
       username: user.username,
       password: '',
       roleIds: userRoleIds,
+      billingGroupId: user.billingGroupId || null,
+      orgUnitId: user.orgUnitId || null, // NEU
     }
   } else {
     isEditing.value = false
-    formData.value = { id: null, username: '', password: '', roleIds: [] }
+    const defaultGroup = billingGroups.value.find((g) => g.isDefault)
+    formData.value = {
+      id: null,
+      username: '',
+      password: '',
+      roleIds: [],
+      billingGroupId: defaultGroup ? defaultGroup.id : null,
+      orgUnitId: null,
+    }
   }
   showModal.value = true
 }
@@ -335,6 +421,8 @@ const saveUser = async () => {
     const payload = {
       username: formData.value.username,
       roleIds: formData.value.roleIds,
+      billingGroupId: formData.value.billingGroupId,
+      orgUnitId: formData.value.orgUnitId, // NEU
       ...(formData.value.password && { password: formData.value.password }),
     }
 
@@ -369,5 +457,7 @@ const formatCurrency = (cents: number) => {
 onMounted(() => {
   fetchUsers()
   fetchRoles()
+  fetchBillingGroups()
+  fetchOrgUnits() // NEU
 })
 </script>

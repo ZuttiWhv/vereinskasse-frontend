@@ -9,7 +9,7 @@
       </div>
 
       <div class="flex items-center gap-4">
-        <label for="stichtag-input"  class="text-sm font-medium text-gray-600">Stichtag:</label>
+        <label for="stichtag-input" class="text-sm font-medium text-gray-600">Stichtag:</label>
         <input
           id="stichtag-input"
           v-model="stichtag"
@@ -85,7 +85,17 @@ import { ref, computed, onMounted } from 'vue'
 import apiClient from '@/api/client'
 import type { UserBalance } from '@/types'
 
-const stichtag = ref(new Date().toISOString().slice(0, 16))
+const getLocalISOString = () => {
+  const now = new Date()
+  // Verschiebung in Minuten abrufen und in Millisekunden umrechnen
+  const offset = now.getTimezoneOffset() * 60000
+  // Lokale Zeit durch Abzug des Offsets (Offset ist bei uns negativ)
+  const localISOTime = new Date(now.getTime() - offset).toISOString().slice(0, 16)
+  return localISOTime
+}
+
+const stichtag = ref(getLocalISOString())
+
 const balances = ref<UserBalance[]>([])
 
 const fetchBalances = async () => {

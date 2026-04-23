@@ -93,6 +93,8 @@
                 >Interner Name (eindeutig)</label
               >
               <input
+                id="product-name"
+                @focus="kbStore.open('product-name', formData.name)"
                 v-model="formData.name"
                 type="text"
                 class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
@@ -103,6 +105,8 @@
               <label class="block text-sm font-medium text-gray-700 mb-1">Anzeigename</label>
               <input
                 v-model="formData.anzeigename"
+                id="product-showname"
+                @focus="kbStore.open('product-showname', formData.anzeigename)"
                 type="text"
                 class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="z.B. Pils 0,33l"
@@ -115,7 +119,11 @@
               <label class="block text-sm font-medium text-gray-700 mb-1">Preis (€)</label>
               <input
                 v-model="displayPrice"
-                type="number"
+                id="product-price"
+                @focus="kbStore.open('product-price', String(displayPrice), 'numeric')"
+                type="text"
+                inputmode="decimal"
+                pattern="[0-9]*"
                 step="0.01"
                 class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -185,6 +193,8 @@ import { ref, computed, onMounted } from 'vue'
 import apiClient from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { mediaApi } from '@/api/mediaApi'
+import { useKeyboardStore } from '@/stores/keyboard'
+const kbStore = useKeyboardStore()
 
 const authStore = useAuthStore()
 
