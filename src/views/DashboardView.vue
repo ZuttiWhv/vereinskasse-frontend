@@ -3,11 +3,16 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { ShopService } from '@/api/shop.service'
-import type { Category, Product } from '@/types'
+import type { Category, Product as BaseProduct } from '@/types'
 import { mediaApi } from '@/api/mediaApi'
 
 const authStore = useAuthStore()
 const router = useRouter()
+
+// Wir erweitern das Interface lokal, um sicherzustellen, dass 'active' bekannt ist
+interface Product extends BaseProduct {
+  active: boolean
+}
 
 // --- ZUSTAND (STATE) ---
 const categories = ref<Category[]>([])
@@ -68,7 +73,7 @@ const selectCategory = async (category: Category) => {
   try {
     const allProducts = await ShopService.getProductsByCategory(category.id)
     // Filtert deaktivierte Produkte lokal aus
-    products.value = allProducts.filter((p) => p.active !== false)
+    products.value = (allProducts as Product[]).filter(p => p.active !== false)
   } finally {
     isLoading.value = false
   }
@@ -152,9 +157,7 @@ const formatPrice = (cents: number) => {
             alt=""
             class="card-img"
           />
-          <div v-else class="card-img flex items-center justify-center bg-gray-100 text-4xl">
-            📦
-          </div>
+          <div v-else class="card-img flex items-center justify-center bg-gray-100 text-4xl">📦</div>
 
           <div class="card-content">
             <h2>{{ prod.anzeigename || prod.name }}</h2>
@@ -232,12 +235,8 @@ const formatPrice = (cents: number) => {
 }
 
 @keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 /* Grids & Cards */
@@ -259,9 +258,7 @@ const formatPrice = (cents: number) => {
 
 .interactive {
   cursor: pointer;
-  transition:
-    transform 0.2s,
-    box-shadow 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .interactive:hover {
@@ -306,9 +303,7 @@ const formatPrice = (cents: number) => {
   color: #718096;
 }
 
-.mt-4 {
-  margin-top: 1.5rem;
-}
+.mt-4 { margin-top: 1.5rem; }
 
 /* Kauf-Bereich */
 .purchase-box {
