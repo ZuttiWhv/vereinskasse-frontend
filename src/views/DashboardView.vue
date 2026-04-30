@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { ShopService } from '@/api/shop.service'
@@ -18,11 +18,39 @@ const selectedProduct = ref<Product | null>(null)
 const quantity = ref<number>(1)
 const isLoading = ref(false)
 
+// --- INAKTIVITÄTS-TIMER (Sicherheit am Terminal) ---
+let inactivityTimer: number | null = null
+const INACTIVITY_TIMEOUT_MS = 30000 // 30 Sekunden
+
+const resetInactivityTimer = () => {
+  if (inactivityTimer) window.clearTimeout(inactivityTimer)
+  inactivityTimer = window.setTimeout(() => {
+    authStore.logout()
+    router.push('/login')
+  }, INACTIVITY_TIMEOUT_MS)
+}
+
+const setupActivityListeners = () => {
+  window.addEventListener('mousemove', resetInactivityTimer)
+  window.addEventListener('touchstart', resetInactivityTimer)
+  window.addEventListener('click', resetInactivityTimer)
+  window.addEventListener('keydown', resetInactivityTimer)
+  resetInactivityTimer()
+}
+
+const cleanupActivityListeners = () => {
+  window.removeEventListener('mousemove', resetInactivityTimer)
+  window.removeEventListener('touchstart', resetInactivityTimer)
+  window.removeEventListener('click', resetInactivityTimer)
+  window.removeEventListener('keydown', resetInactivityTimer)
+  if (inactivityTimer) window.clearTimeout(inactivityTimer)
+}
+
 // --- LOGIK ---
 
-// 1. Initial alle Kategorien laden
 onMounted(async () => {
   isLoading.value = true
+  setupActivityListeners()
   try {
     categories.value = await ShopService.getCategories()
   } finally {
@@ -30,24 +58,27 @@ onMounted(async () => {
   }
 })
 
-// 2. Kategorie wählen -> Produkte laden
+onUnmounted(() => {
+  cleanupActivityListeners()
+})
+
 const selectCategory = async (category: Category) => {
   selectedCategory.value = category
   isLoading.value = true
   try {
-    products.value = await ShopService.getProductsByCategory(category.id)
+    const allProducts = await ShopService.getProductsByCategory(category.id)
+    // Filtert deaktivierte Produkte lokal aus
+    products.value = allProducts.filter((p) => p.active !== false)
   } finally {
     isLoading.value = false
   }
 }
 
-// 3. Produkt wählen -> Mengenansicht öffnen
 const selectProduct = (product: Product) => {
   selectedProduct.value = product
   quantity.value = 1
 }
 
-// 4. Navigation zurück
 const goBack = () => {
   if (selectedProduct.value) {
     selectedProduct.value = null
@@ -57,31 +88,21 @@ const goBack = () => {
   }
 }
 
-// 5. DER KAUF-PROZESS
 const handlePurchase = async () => {
   if (!selectedProduct.value) return
 
   isLoading.value = true
   try {
-    // 1. Aufruf des Services
     await ShopService.createSale(selectedProduct.value.id, quantity.value)
-
-    // 2. Logout einleiten
     authStore.logout()
-
-    // 3. WICHTIG: Sofort navigieren, damit das "Einen Moment bitte"
-    // der Dashboard-Komponente verschwindet, da diese nun zerstört wird.
     router.push('/login')
   } catch (error) {
     console.error('Kauffehler:', error)
     alert('Fehler beim Buchen. Ist dein Guthaben gedeckt?')
-    // Nur im Fehlerfall müssen wir isLoading auf false setzen,
-    // da wir bei Erfolg die Seite ohnehin verlassen.
     isLoading.value = false
   }
 }
 
-// Preis-Formatierung
 const formatPrice = (cents: number) => {
   return (cents / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })
 }
@@ -96,8 +117,12 @@ const formatPrice = (cents: number) => {
       <h1 v-else>Menge anpassen</h1>
     </header>
 
-    <div v-if="isLoading" class="loader">Einen Moment bitte...</div>
+    <div v-if="isLoading" class="loader-container">
+      <div class="loader-spinner"></div>
+      <p>Einen Moment bitte...</p>
+    </div>
 
+    <!-- Kategorien-Grid -->
     <section v-if="!selectedCategory && !isLoading" class="grid">
       <div
         v-for="cat in categories"
@@ -112,28 +137,38 @@ const formatPrice = (cents: number) => {
       </div>
     </section>
 
+    <!-- Produkte-Grid -->
     <section v-if="selectedCategory && !selectedProduct && !isLoading" class="grid">
-      <div
-        v-for="prod in products"
-        :key="prod.id"
-        class="card interactive"
-        @click="selectProduct(prod)"
-      >
-        <img
-          v-if="prod.imagePath"
-          :src="mediaApi.getImageUrl(prod.imagePath, 200)"
-          alt=""
-          class="card-img"
-        />
-        <div v-else class="card-img flex items-center justify-center bg-gray-100 text-4xl">📦</div>
+      <template v-if="products.length > 0">
+        <div
+          v-for="prod in products"
+          :key="prod.id"
+          class="card interactive"
+          @click="selectProduct(prod)"
+        >
+          <img
+            v-if="prod.imagePath"
+            :src="mediaApi.getImageUrl(prod.imagePath, 200)"
+            alt=""
+            class="card-img"
+          />
+          <div v-else class="card-img flex items-center justify-center bg-gray-100 text-4xl">
+            📦
+          </div>
 
-        <div class="card-content">
-          <h2>{{ prod.anzeigename || prod.name }}</h2>
-          <p class="price-tag">{{ formatPrice(prod.price) }}</p>
+          <div class="card-content">
+            <h2>{{ prod.anzeigename || prod.name }}</h2>
+            <p class="price-tag">{{ formatPrice(prod.price) }}</p>
+          </div>
         </div>
+      </template>
+      <div v-else class="empty-state">
+        <p>In dieser Kategorie gibt es aktuell keine vorrätigen Produkte.</p>
+        <button @click="goBack" class="btn-secondary mt-4">Zurück zur Übersicht</button>
       </div>
     </section>
 
+    <!-- Kauf-Ansicht -->
     <section v-if="selectedProduct && !isLoading" class="purchase-box">
       <div class="card purchase-card">
         <img :src="mediaApi.getImageUrl(selectedProduct.imagePath, 300)" class="card-img" alt="" />
@@ -142,7 +177,7 @@ const formatPrice = (cents: number) => {
           <p class="price-hint">{{ formatPrice(selectedProduct.price) }} pro Stück</p>
 
           <div class="quantity-picker">
-            <button @click="quantity > 1 ? quantity-- : null">-</button>
+            <button @click="quantity > 1 ? quantity-- : null" :disabled="quantity <= 1">-</button>
             <span class="quantity-value">{{ quantity }}</span>
             <button @click="quantity++">+</button>
           </div>
@@ -166,25 +201,58 @@ const formatPrice = (cents: number) => {
 .view-header {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 1.5rem;
   margin-bottom: 2rem;
 }
 
-/* Responsive Grid */
+.view-header h1 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #1a202c;
+}
+
+/* Lade-Zustand */
+.loader-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 5rem 0;
+  color: #718096;
+}
+
+.loader-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #edf2f7;
+  border-top: 4px solid #3182ce;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Grids & Cards */
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 1.5rem;
 }
 
-/* Card Design */
 .card {
   background: white;
   border-radius: 12px;
-  border: 1px solid #eee;
+  border: 1px solid #e2e8f0;
   overflow: hidden;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
 }
@@ -203,28 +271,46 @@ const formatPrice = (cents: number) => {
 
 .card-img {
   width: 100%;
-  height: 150px;
+  height: 160px;
   object-fit: contain;
-  background: #f9f9f9;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 1rem; /* Ein bisschen Padding für Luft */
+  background: #f8fafc;
+  padding: 1rem;
 }
 
 .card-content {
-  padding: 1.5rem;
+  padding: 1.25rem;
   text-align: center;
 }
 
-.price-tag {
-  font-size: 1.25rem;
-  font-weight: bold;
-  color: #2c3e50;
-  margin-top: 0.5rem;
+.card-content h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 0.5rem;
 }
 
-/* Purchase View Specifics */
+.price-tag {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #3182ce;
+}
+
+/* Empty State */
+.empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 5rem 2rem;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 2px dashed #e2e8f0;
+  color: #718096;
+}
+
+.mt-4 {
+  margin-top: 1.5rem;
+}
+
+/* Kauf-Bereich */
 .purchase-box {
   display: flex;
   justify-content: center;
@@ -232,61 +318,81 @@ const formatPrice = (cents: number) => {
 
 .purchase-card {
   width: 100%;
-  max-width: 400px;
+  max-width: 450px;
 }
 
 .quantity-picker {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 1.5rem;
+  gap: 2rem;
   margin: 2rem 0;
 }
 
 .quantity-picker button {
-  width: 45px;
-  height: 45px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
-  border: 1px solid #ddd;
+  border: 2px solid #e2e8f0;
   background: white;
   font-size: 1.5rem;
+  font-weight: bold;
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.quantity-picker button:hover:not(:disabled) {
+  border-color: #3182ce;
+  color: #3182ce;
+}
+
+.quantity-picker button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 .quantity-value {
-  font-size: 2rem;
-  font-weight: bold;
+  font-size: 2.5rem;
+  font-weight: 800;
 }
 
 .total-sum {
-  font-size: 1.5rem;
-  font-weight: bold;
+  font-size: 1.8rem;
+  font-weight: 800;
   margin-bottom: 2rem;
-  border-top: 1px solid #eee;
-  padding-top: 1rem;
+  border-top: 2px solid #f7fafc;
+  padding-top: 1.5rem;
+  color: #1a202c;
 }
 
 .btn-confirm {
   width: 100%;
-  padding: 1rem;
-  background: #27ae60;
+  padding: 1.25rem;
+  background: #38a169;
   color: white;
   border: none;
-  border-radius: 8px;
-  font-size: 1.1rem;
-  font-weight: bold;
+  border-radius: 10px;
+  font-size: 1.2rem;
+  font-weight: 700;
   cursor: pointer;
+  transition: background 0.2s;
 }
 
 .btn-confirm:hover {
-  background: #219150;
+  background: #2f855a;
 }
 
 .btn-secondary {
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  border: 1px solid #ccc;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
   background: white;
+  font-weight: 600;
+  color: #4a5568;
   cursor: pointer;
+}
+
+.btn-secondary:hover {
+  background: #f7fafc;
 }
 </style>

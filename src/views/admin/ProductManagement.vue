@@ -3,7 +3,7 @@
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
         <h1 class="text-2xl font-bold text-gray-800">Produkte verwalten</h1>
-        <p class="text-sm text-gray-500">Preise, Bilder und Kategorien deiner Artikel</p>
+        <p class="text-sm text-gray-500">Preise, Bilder, Kategorien und Vorrat deiner Artikel</p>
       </div>
       <button
         v-if="authStore.hasAuthority('WRITE_PRODUCT')"
@@ -21,6 +21,7 @@
             <tr class="bg-gray-50 border-b border-gray-100 text-gray-600 text-sm uppercase">
               <th class="px-6 py-4 font-semibold">Bild</th>
               <th class="px-6 py-4 font-semibold">Name / Anzeigename</th>
+              <th class="px-6 py-4 font-semibold">Status</th>
               <th class="px-6 py-4 font-semibold">Kategorie</th>
               <th class="px-6 py-4 font-semibold">Preis</th>
               <th class="px-6 py-4 font-semibold text-right">Aktionen</th>
@@ -31,17 +32,30 @@
               v-for="product in products"
               :key="product.id"
               class="hover:bg-gray-50/50 transition"
+              :class="{ 'opacity-60 bg-gray-50': !product.active }"
             >
               <td class="px-6 py-4 whitespace-nowrap">
                 <img
                   :src="mediaApi.getImageUrl(product.imagePath, 100)"
                   class="h-12 w-12 rounded-lg object-cover border bg-gray-50"
+                  :class="{ grayscale: !product.active }"
                   alt="Produkt"
                 />
               </td>
               <td class="px-6 py-4">
                 <div class="font-bold text-gray-900">{{ product.anzeigename || product.name }}</div>
                 <div class="text-xs text-gray-400 font-mono">{{ product.name }}</div>
+              </td>
+              <td class="px-6 py-4">
+                <span
+                  v-if="product.active"
+                  class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-bold"
+                >
+                  Auf Vorrat
+                </span>
+                <span v-else class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-bold">
+                  Leer / Inaktiv
+                </span>
               </td>
               <td class="px-6 py-4">
                 <span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-medium">
@@ -142,6 +156,24 @@
             </div>
           </div>
 
+          <!-- Status / Vorrat -->
+          <div
+            class="p-4 bg-gray-50 border border-gray-100 rounded-lg flex items-center justify-between"
+          >
+            <div>
+              <p class="text-sm font-bold text-gray-800">Auf Vorrat (Aktiv)</p>
+              <p class="text-xs text-gray-500">
+                Wenn deaktiviert, können User das Produkt nicht mehr kaufen.
+              </p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" v-model="formData.active" class="sr-only peer" />
+              <div
+                class="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"
+              ></div>
+            </label>
+          </div>
+
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Produktbild</label>
             <div
@@ -202,13 +234,17 @@ interface Category {
   id: number
   name: string
 }
+
+// Angepasst an das neue Java Record DTO
 interface Product {
   id: number
   name: string
   anzeigename: string
   price: number
+  priceString?: string
   imagePath: string
   category: Category
+  active: boolean // Neues Feld
 }
 
 const products = ref<Product[]>([])
@@ -223,9 +259,10 @@ const formData = ref({
   price: 0,
   categoryId: null as number | null,
   imagePath: '',
+  active: true, // Neues Feld
 })
 
-const displayPrice = ref(0) // Für die Eingabe in Euro
+const displayPrice = ref(0)
 const selectedFile = ref<File | null>(null)
 const previewUrl = ref('')
 
@@ -234,6 +271,7 @@ const isFormValid = computed(() => {
 })
 
 const fetchProducts = async () => {
+  // Holt nun standardmäßig alle nicht gelöschten Produkte aus dem Backend
   const { data } = await apiClient.get('/api/products')
   products.value = data
 }
@@ -253,6 +291,7 @@ const openModal = (product?: Product) => {
       price: product.price,
       categoryId: product.category?.id || null,
       imagePath: product.imagePath,
+      active: product.active,
     }
     displayPrice.value = product.price / 100
   } else {
@@ -264,6 +303,7 @@ const openModal = (product?: Product) => {
       price: 0,
       categoryId: null,
       imagePath: '',
+      active: true, // Standardmäßig aktiv beim Anlegen
     }
     displayPrice.value = 0
   }
@@ -282,27 +322,26 @@ const handleFileUpload = (event: Event) => {
 
 const saveProduct = async () => {
   try {
-    // 1. Falls ein neues Bild gewählt wurde: Über den zentralen Service hochladen
     if (selectedFile.value) {
       try {
         const uploadedFilename = await mediaApi.uploadImage(selectedFile.value)
-        formData.value.imagePath = uploadedFilename // Nur den Filename speichern
+        formData.value.imagePath = uploadedFilename
       } catch (imageError) {
         alert('Bild-Upload fehlgeschlagen.')
         return
       }
     }
 
-    // 2. Preis in Cents umrechnen
     const finalPriceInCents = Math.round(displayPrice.value * 100)
 
-    // 3. Payload zusammenbauen (Inklusive Kategorie-Objekt für Hibernate)
+    // Payload angepasst an dein ProductRequestDTO (Record)
     const payload = {
       name: formData.value.name,
       anzeigename: formData.value.anzeigename,
       price: finalPriceInCents,
       imagePath: formData.value.imagePath,
-      category: { id: formData.value.categoryId },
+      categoryId: formData.value.categoryId, // Jetzt nur noch die ID statt verschachteltes Objekt
+      active: formData.value.active, // Status übermitteln
     }
 
     if (isEditing.value && formData.value.id) {
@@ -320,7 +359,12 @@ const saveProduct = async () => {
 }
 
 const deleteProduct = async (id: number) => {
-  if (confirm('Produkt wirklich löschen?')) {
+  // Angepasster Bestätigungstext, da es nun ein Soft-Delete ist
+  if (
+    confirm(
+      'Dieses Produkt wirklich löschen? Es wird ausgeblendet und steht für den Verkauf nicht mehr zur Verfügung.',
+    )
+  ) {
     await apiClient.delete(`/api/products/${id}`)
     fetchProducts()
   }
