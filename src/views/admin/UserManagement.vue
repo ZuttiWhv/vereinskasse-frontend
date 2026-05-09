@@ -18,6 +18,24 @@
         </div>
 
         <button
+          v-if="authStore.hasAuthority('READ_USER')"
+          @click="downloadBarcodePdf"
+          class="flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition shadow-sm font-semibold whitespace-nowrap"
+          title="PDF Liste mit Barcodes exportieren"
+        >
+          <span>📄</span> PDF Export
+        </button>
+
+        <button
+          v-if="allowBarcodeLogin && authStore.hasAuthority('WRITE_USER')"
+          @click="generateAllBarcodes"
+          :disabled="isGenerating"
+          class="bg-purple-100 hover:bg-purple-200 text-purple-700 border border-purple-200 px-4 py-2 rounded-lg transition shadow-sm font-semibold whitespace-nowrap disabled:opacity-50"
+        >
+          {{ isGenerating ? 'Generiere...' : '🔤 Alle Barcodes neu' }}
+        </button>
+
+        <button
           v-if="authStore.hasAuthority('WRITE_USER')"
           @click="openModal()"
           class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition shadow-md font-semibold whitespace-nowrap"
@@ -44,7 +62,25 @@
           <tbody class="divide-y divide-gray-50">
             <tr v-for="user in filteredUsers" :key="user.id" class="hover:bg-gray-50/50 transition">
               <td class="px-6 py-4">
-                <div class="font-bold text-gray-900">{{ user.username }}</div>
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-gray-900">{{ user.username }}</span>
+                  <div
+                    v-if="allowBarcodeLogin"
+                    class="flex items-center"
+                    :title="user.hasBarcode || user.barcode ? 'Barcode zugewiesen' : 'Kein Barcode'"
+                  >
+                    <span
+                      class="text-xs px-1.5 py-0.5 rounded border"
+                      :class="
+                        user.hasBarcode || user.barcode
+                          ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                          : 'bg-gray-50 text-gray-400 border-gray-200'
+                      "
+                    >
+                      🏷️
+                    </span>
+                  </div>
+                </div>
               </td>
               <td class="px-6 py-4">
                 <div class="flex flex-col gap-1">
@@ -82,6 +118,14 @@
                 </span>
               </td>
               <td class="px-6 py-4 text-right space-x-3">
+                <button
+                  v-if="allowBarcodeLogin && authStore.hasAuthority('WRITE_USER')"
+                  @click="generateBarcodeForUser(user)"
+                  class="text-purple-600 hover:text-purple-800 font-medium text-sm"
+                  title="Neuen Barcode für diesen Benutzer generieren"
+                >
+                  Barcode
+                </button>
                 <button
                   v-if="authStore.hasAuthority('WRITE_USER')"
                   @click="openDepositModal(user)"
@@ -129,18 +173,14 @@
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Benutzername</label>
             <input
-              id="user-name"
               @focus="kbStore.open('user-name', formData.username)"
               v-model="formData.username"
               type="text"
               class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1"
-              >Abteilung / OU (für Quick-Login)</label
-            >
+            <label class="block text-sm font-medium text-gray-700 mb-1">Abteilung / OU</label>
             <select
               v-model="formData.orgUnitId"
               class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
@@ -151,7 +191,6 @@
               </option>
             </select>
           </div>
-
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Abrechnungsgruppe</label>
             <select
@@ -160,29 +199,21 @@
             >
               <option :value="null" disabled>Bitte Gruppe wählen...</option>
               <option v-for="group in billingGroups" :key="group.id" :value="group.id">
-                {{ group.name }}
-                {{
-                  group.allowNegativeBalance
-                    ? '(Dispo: ' + group.creditLimit / 100 + '€)'
-                    : '(Nur Guthaben)'
-                }}
+                {{ group.name }} {{ group.allowNegativeBalance ? '(Dispo)' : '(Nur Guthaben)' }}
               </option>
             </select>
           </div>
-
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">{{
               isEditing ? 'Neues Passwort (optional)' : 'Passwort'
             }}</label>
             <input
-              v-model="formData.password"
               type="password"
-              id="user-password"
               @focus="kbStore.open('user-password', formData.password)"
+              v-model="formData.password"
               class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Rollen zuweisen</label>
             <div
@@ -198,7 +229,7 @@
                   :id="'role-' + role.id"
                   :value="role.id"
                   v-model="formData.roleIds"
-                  class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                  class="h-4 w-4 text-blue-600 border-gray-300 rounded cursor-pointer"
                 />
                 <label
                   :for="'role-' + role.id"
@@ -238,14 +269,12 @@
           <h2 class="text-xl font-bold text-gray-800">Guthaben aufladen</h2>
           <p class="text-sm text-gray-500">Für {{ selectedUserForDeposit?.username }}</p>
         </div>
-
         <div class="p-6">
           <label class="block text-sm font-medium text-gray-700 mb-2 text-center"
             >Betrag in Euro</label
           >
           <div class="relative">
             <input
-              id="depAmount"
               @focus="kbStore.open('depAmount', String(depositAmount))"
               v-model="depositAmount"
               type="number"
@@ -259,7 +288,6 @@
             >
           </div>
         </div>
-
         <div class="p-6 border-t border-gray-100 bg-gray-50 flex flex-col gap-2">
           <button
             @click="handleDeposit"
@@ -285,22 +313,25 @@ import { ref, computed, onMounted } from 'vue'
 import apiClient from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { useKeyboardStore } from '@/stores/keyboard'
-const kbStore = useKeyboardStore()
 
+const kbStore = useKeyboardStore()
 const authStore = useAuthStore()
 
-// --- ZUSTAND (STATE) ---
+// --- STATE ---
 const users = ref<any[]>([])
 const roles = ref<any[]>([])
 const billingGroups = ref<any[]>([])
-const orgUnits = ref<any[]>([]) // NEU: Organisationseinheiten
+const orgUnits = ref<any[]>([])
 const searchQuery = ref('')
 const showModal = ref(false)
 const isEditing = ref(false)
-
 const showDepositModal = ref(false)
 const depositAmount = ref<number>(0)
 const selectedUserForDeposit = ref<any>(null)
+
+// Barcode Feature States
+const allowBarcodeLogin = ref(false)
+const isGenerating = ref(false)
 
 const formData = ref({
   id: null as number | null,
@@ -308,7 +339,7 @@ const formData = ref({
   password: '',
   roleIds: [] as number[],
   billingGroupId: null as number | null,
-  orgUnitId: null as number | null, // NEU
+  orgUnitId: null as number | null,
 })
 
 // --- COMPUTED ---
@@ -316,9 +347,7 @@ const filteredUsers = computed(() => {
   const filtered = users.value.filter((user) =>
     user.username.toLowerCase().includes(searchQuery.value.toLowerCase()),
   )
-  return filtered.sort((a, b) =>
-    a.username.localeCompare(b.username, 'de', { sensitivity: 'base' }),
-  )
+  return filtered.sort((a, b) => a.username.localeCompare(b.username, 'de'))
 })
 
 const isFormValid = computed(() => {
@@ -330,12 +359,21 @@ const isFormValid = computed(() => {
 })
 
 // --- AKTIONEN ---
+const fetchSettings = async () => {
+  try {
+    const { data } = await apiClient.get('/api/settings')
+    allowBarcodeLogin.value = data.allowBarcodeLogin || false
+  } catch (error) {
+    console.error('Fehler Settings:', error)
+  }
+}
+
 const fetchUsers = async () => {
   try {
     const { data } = await apiClient.get('/api/users')
     users.value = Object.values(data)
   } catch (error) {
-    console.error('Fehler beim Laden der Benutzer', error)
+    console.error('Fehler Users:', error)
   }
 }
 
@@ -344,7 +382,7 @@ const fetchRoles = async () => {
     const { data } = await apiClient.get('/api/roles')
     roles.value = Object.values(data).sort((a: any, b: any) => a.name.localeCompare(b.name))
   } catch (error) {
-    console.error('Fehler beim Laden der Rollen', error)
+    console.error('Fehler Rollen:', error)
   }
 }
 
@@ -353,17 +391,59 @@ const fetchBillingGroups = async () => {
     const { data } = await apiClient.get('/api/billing-groups')
     billingGroups.value = data
   } catch (error) {
-    console.error('Fehler beim Laden der Abrechnungsgruppen', error)
+    console.error('Fehler Billing:', error)
   }
 }
 
 const fetchOrgUnits = async () => {
   try {
-    // Wir nutzen hier die flache Liste für das Dropdown
     const { data } = await apiClient.get('/api/org-units')
     orgUnits.value = data.sort((a: any, b: any) => a.name.localeCompare(b.name))
   } catch (error) {
-    console.error('Fehler beim Laden der OUs', error)
+    console.error('Fehler OUs:', error)
+  }
+}
+
+// PDF EXPORT
+const downloadBarcodePdf = async () => {
+  try {
+    const response = await apiClient.get('/api/export/user-barcodes-pdf', { responseType: 'blob' })
+    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', 'mitglieder_barcodes.pdf')
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  } catch (error) {
+    alert('Export fehlgeschlagen. Haben Sie Admin-Rechte?')
+  }
+}
+
+// BARCODE GENERIERUNG
+const generateBarcodeForUser = async (user: any) => {
+  if (confirm(`Neuen Barcode für "${user.username}" generieren?`)) {
+    try {
+      await apiClient.post(`/api/users/${user.id}/generate-barcode`)
+      await fetchUsers()
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Fehler.')
+    }
+  }
+}
+
+const generateAllBarcodes = async () => {
+  if (confirm(`Wirklich für ALLE Benutzer neue Barcodes erstellen?`)) {
+    isGenerating.value = true
+    try {
+      await apiClient.post(`/api/users/generate-barcodes`)
+      await fetchUsers()
+    } catch (error: any) {
+      alert('Fehler.')
+    } finally {
+      isGenerating.value = false
+    }
   }
 }
 
@@ -379,13 +459,10 @@ const handleDeposit = async () => {
     const amountInCents = Math.round(depositAmount.value * 100)
     await apiClient.post(`/api/users/${selectedUserForDeposit.value.id}/deposit`, amountInCents)
     await fetchUsers()
-    if (selectedUserForDeposit.value.id === authStore.user?.id) {
-      await authStore.fetchProfile()
-    }
+    if (selectedUserForDeposit.value.id === authStore.user?.id) await authStore.fetchProfile()
     showDepositModal.value = false
-    depositAmount.value = 0
   } catch (error: any) {
-    alert(error.response?.data?.message || 'Fehler bei der Einzahlung.')
+    alert('Fehler.')
   }
 }
 
@@ -399,7 +476,7 @@ const openModal = (user: any = null) => {
       password: '',
       roleIds: userRoleIds,
       billingGroupId: user.billingGroupId || null,
-      orgUnitId: user.orgUnitId || null, // NEU
+      orgUnitId: user.orgUnitId || null,
     }
   } else {
     isEditing.value = false
@@ -422,20 +499,18 @@ const saveUser = async () => {
       username: formData.value.username,
       roleIds: formData.value.roleIds,
       billingGroupId: formData.value.billingGroupId,
-      orgUnitId: formData.value.orgUnitId, // NEU
+      orgUnitId: formData.value.orgUnitId,
       ...(formData.value.password && { password: formData.value.password }),
     }
-
     if (isEditing.value && formData.value.id) {
       await apiClient.put(`/api/users/${formData.value.id}`, payload)
     } else {
       await apiClient.post('/api/users', payload)
     }
-
     await fetchUsers()
     showModal.value = false
   } catch (error: any) {
-    alert(error.response?.data?.message || 'Fehler beim Speichern.')
+    alert('Fehler beim Speichern.')
   }
 }
 
@@ -445,19 +520,19 @@ const deleteUser = async (user: any) => {
       await apiClient.delete(`/api/users/${user.id}`)
       await fetchUsers()
     } catch (error) {
-      alert('Löschen fehlgeschlagen.')
+      alert('Fehler beim Löschen.')
     }
   }
 }
 
-const formatCurrency = (cents: number) => {
-  return (cents / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })
-}
+const formatCurrency = (cents: number) =>
+  (cents / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })
 
 onMounted(() => {
+  fetchSettings()
   fetchUsers()
   fetchRoles()
   fetchBillingGroups()
-  fetchOrgUnits() // NEU
+  fetchOrgUnits()
 })
 </script>
