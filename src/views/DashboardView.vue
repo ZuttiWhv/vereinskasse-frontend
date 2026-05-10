@@ -3,15 +3,16 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { ShopService } from '@/api/shop.service'
+import apiClient from '@/api/client' // Import für direkte Barcode-Suche
 import type { Category, Product as BaseProduct } from '@/types'
 import { mediaApi } from '@/api/mediaApi'
 
 const authStore = useAuthStore()
 const router = useRouter()
 
-// Wir erweitern das Interface lokal, um sicherzustellen, dass 'active' bekannt ist
 interface Product extends BaseProduct {
   active: boolean
+  barcode?: string
 }
 
 // --- ZUSTAND (STATE) ---
@@ -19,13 +20,57 @@ const categories = ref<Category[]>([])
 const products = ref<Product[]>([])
 const selectedCategory = ref<Category | null>(null)
 const selectedProduct = ref<Product | null>(null)
-
 const quantity = ref<number>(1)
 const isLoading = ref(false)
 
-// --- INAKTIVITÄTS-TIMER (Sicherheit am Terminal) ---
+// --- BARCODE LOGIK ---
+const barcodeBuffer = ref('')
+const lastKeyTime = ref(0)
+
+const handleBarcodeScanned = async (barcode: string) => {
+  isLoading.value = true
+  try {
+    // Wir suchen das Produkt direkt über den Barcode im Backend
+    const { data: product } = await apiClient.get<Product>(`/api/products/barcode/${barcode}`)
+
+    if (product && product.active) {
+      // Produkt gefunden -> Direkt in die Kaufansicht springen
+      selectProduct(product)
+    } else {
+      alert('Produkt nicht gefunden oder nicht vorrätig.')
+    }
+  } catch (e) {
+    console.error('Barcode Fehler:', e)
+    alert('Fehler beim Scannen des Barcodes.')
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const handleGlobalKeyDown = (event: KeyboardEvent) => {
+  const currentTime = Date.now()
+
+  // Zeitlicher Check (Scanner ist viel schneller als Mensch)
+  if (currentTime - lastKeyTime.value > 50) {
+    barcodeBuffer.value = ''
+  }
+
+  if (event.key === 'Enter') {
+    if (barcodeBuffer.value.length > 2) {
+      handleBarcodeScanned(barcodeBuffer.value)
+    }
+    barcodeBuffer.value = ''
+  } else if (event.key.length === 1) {
+    barcodeBuffer.value += event.key
+  }
+
+  lastKeyTime.value = currentTime
+  resetInactivityTimer() // Jede Taste setzt auch den Timer zurück
+}
+
+// --- INAKTIVITÄTS-TIMER ---
 let inactivityTimer: number | null = null
-const INACTIVITY_TIMEOUT_MS = 30000 // 30 Sekunden
+const INACTIVITY_TIMEOUT_MS = 30000
 
 const resetInactivityTimer = () => {
   if (inactivityTimer) window.clearTimeout(inactivityTimer)
@@ -39,7 +84,7 @@ const setupActivityListeners = () => {
   window.addEventListener('mousemove', resetInactivityTimer)
   window.addEventListener('touchstart', resetInactivityTimer)
   window.addEventListener('click', resetInactivityTimer)
-  window.addEventListener('keydown', resetInactivityTimer)
+  window.addEventListener('keydown', handleGlobalKeyDown) // Hier den Barcode-Handler integriert
   resetInactivityTimer()
 }
 
@@ -47,7 +92,7 @@ const cleanupActivityListeners = () => {
   window.removeEventListener('mousemove', resetInactivityTimer)
   window.removeEventListener('touchstart', resetInactivityTimer)
   window.removeEventListener('click', resetInactivityTimer)
-  window.removeEventListener('keydown', resetInactivityTimer)
+  window.removeEventListener('keydown', handleGlobalKeyDown)
   if (inactivityTimer) window.clearTimeout(inactivityTimer)
 }
 
@@ -72,8 +117,7 @@ const selectCategory = async (category: Category) => {
   isLoading.value = true
   try {
     const allProducts = await ShopService.getProductsByCategory(category.id)
-    // Filtert deaktivierte Produkte lokal aus
-    products.value = (allProducts as Product[]).filter(p => p.active !== false)
+    products.value = (allProducts as Product[]).filter((p) => p.active !== false)
   } finally {
     isLoading.value = false
   }
@@ -115,20 +159,25 @@ const formatPrice = (cents: number) => {
 
 <template>
   <div class="dashboard">
+    <div class="barcode-hint" v-if="!selectedProduct">
+      <span class="icon">🔍</span> Barcode scannen für Sofortauswahl
+    </div>
+
     <header class="view-header">
-      <button v-if="selectedCategory" @click="goBack" class="btn-secondary">← Zurück</button>
-      <h1 v-if="!selectedCategory">Was möchtest du kaufen?</h1>
-      <h1 v-else-if="!selectedProduct">{{ selectedCategory.name }}</h1>
+      <button v-if="selectedCategory || selectedProduct" @click="goBack" class="btn-secondary">
+        ← Zurück
+      </button>
+      <h1 v-if="!selectedCategory && !selectedProduct">Was möchtest du kaufen?</h1>
+      <h1 v-else-if="selectedCategory && !selectedProduct">{{ selectedCategory.name }}</h1>
       <h1 v-else>Menge anpassen</h1>
     </header>
 
     <div v-if="isLoading" class="loader-container">
       <div class="loader-spinner"></div>
-      <p>Einen Moment bitte...</p>
+      <p>Prüfe Barcode...</p>
     </div>
 
-    <!-- Kategorien-Grid -->
-    <section v-if="!selectedCategory && !isLoading" class="grid">
+    <section v-if="!selectedCategory && !selectedProduct && !isLoading" class="grid">
       <div
         v-for="cat in categories"
         :key="cat.id"
@@ -142,7 +191,6 @@ const formatPrice = (cents: number) => {
       </div>
     </section>
 
-    <!-- Produkte-Grid -->
     <section v-if="selectedCategory && !selectedProduct && !isLoading" class="grid">
       <template v-if="products.length > 0">
         <div
@@ -157,7 +205,9 @@ const formatPrice = (cents: number) => {
             alt=""
             class="card-img"
           />
-          <div v-else class="card-img flex items-center justify-center bg-gray-100 text-4xl">📦</div>
+          <div v-else class="card-img flex items-center justify-center bg-gray-100 text-4xl">
+            📦
+          </div>
 
           <div class="card-content">
             <h2>{{ prod.anzeigename || prod.name }}</h2>
@@ -171,9 +221,8 @@ const formatPrice = (cents: number) => {
       </div>
     </section>
 
-    <!-- Kauf-Ansicht -->
     <section v-if="selectedProduct && !isLoading" class="purchase-box">
-      <div class="card purchase-card">
+      <div class="card purchase-card animate-pop">
         <img :src="mediaApi.getImageUrl(selectedProduct.imagePath, 300)" class="card-img" alt="" />
         <div class="card-content">
           <h2>{{ selectedProduct.anzeigename || selectedProduct.name }}</h2>
@@ -188,6 +237,7 @@ const formatPrice = (cents: number) => {
           <div class="total-sum">Gesamt: {{ formatPrice(selectedProduct.price * quantity) }}</div>
 
           <button class="btn-confirm" @click="handlePurchase">Kauf abschließen & Abmelden</button>
+          <button class="btn-cancel-purchase" @click="goBack">Abbrechen</button>
         </div>
       </div>
     </section>
@@ -195,6 +245,46 @@ const formatPrice = (cents: number) => {
 </template>
 
 <style scoped>
+/* Ergänzende Styles */
+.barcode-hint {
+  position: absolute;
+  top: 10px;
+  right: 20px;
+  background: #ebf8ff;
+  color: #2b6cb0;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid #bee3f8;
+}
+
+.btn-cancel-purchase {
+  width: 100%;
+  margin-top: 1rem;
+  padding: 0.8rem;
+  background: transparent;
+  color: #a0aec0;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.animate-pop {
+  animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes pop {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
 .dashboard {
   padding: 2rem;
   max-width: 1000px;
@@ -235,8 +325,12 @@ const formatPrice = (cents: number) => {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Grids & Cards */
@@ -258,7 +352,9 @@ const formatPrice = (cents: number) => {
 
 .interactive {
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 
 .interactive:hover {
@@ -303,7 +399,9 @@ const formatPrice = (cents: number) => {
   color: #718096;
 }
 
-.mt-4 { margin-top: 1.5rem; }
+.mt-4 {
+  margin-top: 1.5rem;
+}
 
 /* Kauf-Bereich */
 .purchase-box {

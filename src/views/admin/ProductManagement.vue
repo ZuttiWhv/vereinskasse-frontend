@@ -3,7 +3,7 @@
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
         <h1 class="text-2xl font-bold text-gray-800">Produkte verwalten</h1>
-        <p class="text-sm text-gray-500">Preise, Bilder, Kategorien und Vorrat deiner Artikel</p>
+        <p class="text-sm text-gray-500">Preise, Bilder, Kategorien und Barcodes deiner Artikel</p>
       </div>
       <button
         v-if="authStore.hasAuthority('WRITE_PRODUCT')"
@@ -21,6 +21,7 @@
             <tr class="bg-gray-50 border-b border-gray-100 text-gray-600 text-sm uppercase">
               <th class="px-6 py-4 font-semibold">Bild</th>
               <th class="px-6 py-4 font-semibold">Name / Anzeigename</th>
+              <th class="px-6 py-4 font-semibold">Barcode</th>
               <th class="px-6 py-4 font-semibold">Status</th>
               <th class="px-6 py-4 font-semibold">Kategorie</th>
               <th class="px-6 py-4 font-semibold">Preis</th>
@@ -45,6 +46,15 @@
               <td class="px-6 py-4">
                 <div class="font-bold text-gray-900">{{ product.anzeigename || product.name }}</div>
                 <div class="text-xs text-gray-400 font-mono">{{ product.name }}</div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div v-if="product.barcode" class="flex items-center gap-1 text-gray-600">
+                  <span class="text-lg">🏷️</span>
+                  <span class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">{{
+                    product.barcode
+                  }}</span>
+                </div>
+                <span v-else class="text-gray-300 text-xs italic">Kein Barcode</span>
               </td>
               <td class="px-6 py-4">
                 <span
@@ -137,8 +147,6 @@
                 @focus="kbStore.open('product-price', String(displayPrice), 'numeric')"
                 type="text"
                 inputmode="decimal"
-                pattern="[0-9]*"
-                step="0.01"
                 class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -156,7 +164,32 @@
             </div>
           </div>
 
-          <!-- Status / Vorrat -->
+          <div class="p-4 bg-blue-50/50 border border-blue-100 rounded-lg">
+            <label class="block text-sm font-bold text-blue-800 mb-1">Produkt-Barcode (EAN)</label>
+            <div class="flex gap-2">
+              <input
+                id="product-barcode"
+                v-model="formData.barcode"
+                @focus="kbStore.open('product-barcode', formData.barcode || '', 'numeric')"
+                type="text"
+                class="flex-1 px-4 py-2 border border-blue-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white font-mono"
+                placeholder="Barcode scannen oder eingeben..."
+              />
+              <button
+                type="button"
+                @click="formData.barcode = ''"
+                class="px-3 py-2 bg-white border border-blue-200 rounded-lg text-gray-400 hover:text-red-500 transition"
+                title="Barcode löschen"
+              >
+                ✕
+              </button>
+            </div>
+            <p class="text-[10px] text-blue-600 mt-1">
+              Tipp: Klicke in das Feld und nutze den Hardware-Scanner, um den Barcode direkt zu
+              erfassen.
+            </p>
+          </div>
+
           <div
             class="p-4 bg-gray-50 border border-gray-100 rounded-lg flex items-center justify-between"
           >
@@ -226,8 +259,8 @@ import apiClient from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { mediaApi } from '@/api/mediaApi'
 import { useKeyboardStore } from '@/stores/keyboard'
-const kbStore = useKeyboardStore()
 
+const kbStore = useKeyboardStore()
 const authStore = useAuthStore()
 
 interface Category {
@@ -235,16 +268,15 @@ interface Category {
   name: string
 }
 
-// Angepasst an das neue Java Record DTO
 interface Product {
   id: number
   name: string
   anzeigename: string
   price: number
-  priceString?: string
+  barcode: string | null // NEU
   imagePath: string
   category: Category
-  active: boolean // Neues Feld
+  active: boolean
 }
 
 const products = ref<Product[]>([])
@@ -257,9 +289,10 @@ const formData = ref({
   name: '',
   anzeigename: '',
   price: 0,
+  barcode: '' as string | null, // NEU
   categoryId: null as number | null,
   imagePath: '',
-  active: true, // Neues Feld
+  active: true,
 })
 
 const displayPrice = ref(0)
@@ -271,7 +304,6 @@ const isFormValid = computed(() => {
 })
 
 const fetchProducts = async () => {
-  // Holt nun standardmäßig alle nicht gelöschten Produkte aus dem Backend
   const { data } = await apiClient.get('/api/products')
   products.value = data
 }
@@ -289,6 +321,7 @@ const openModal = (product?: Product) => {
       name: product.name,
       anzeigename: product.anzeigename,
       price: product.price,
+      barcode: product.barcode || '', // Mapping ergänzt
       categoryId: product.category?.id || null,
       imagePath: product.imagePath,
       active: product.active,
@@ -301,9 +334,10 @@ const openModal = (product?: Product) => {
       name: '',
       anzeigename: '',
       price: 0,
+      barcode: '', // Initial leer
       categoryId: null,
       imagePath: '',
-      active: true, // Standardmäßig aktiv beim Anlegen
+      active: true,
     }
     displayPrice.value = 0
   }
@@ -334,14 +368,14 @@ const saveProduct = async () => {
 
     const finalPriceInCents = Math.round(displayPrice.value * 100)
 
-    // Payload angepasst an dein ProductRequestDTO (Record)
     const payload = {
       name: formData.value.name,
       anzeigename: formData.value.anzeigename,
       price: finalPriceInCents,
+      barcode: formData.value.barcode || null, // NEU: Barcode senden
       imagePath: formData.value.imagePath,
-      categoryId: formData.value.categoryId, // Jetzt nur noch die ID statt verschachteltes Objekt
-      active: formData.value.active, // Status übermitteln
+      categoryId: formData.value.categoryId,
+      active: formData.value.active,
     }
 
     if (isEditing.value && formData.value.id) {
@@ -359,7 +393,6 @@ const saveProduct = async () => {
 }
 
 const deleteProduct = async (id: number) => {
-  // Angepasster Bestätigungstext, da es nun ein Soft-Delete ist
   if (
     confirm(
       'Dieses Produkt wirklich löschen? Es wird ausgeblendet und steht für den Verkauf nicht mehr zur Verfügung.',
