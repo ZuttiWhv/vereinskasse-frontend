@@ -3,7 +3,7 @@
     <header>
       <h1 class="text-2xl font-bold text-gray-800">Mein Profil</h1>
       <p class="text-sm text-gray-500">
-        Verwalte deine Sicherheitseinstellungen und den PIN-Login.
+        Verwalte deine Sicherheitseinstellungen und Anmeldemethoden.
       </p>
     </header>
 
@@ -21,10 +21,49 @@
             @focus="kbStore.open('password', formData.newPassword)"
             v-model="formData.newPassword"
             type="password"
-            placeholder="Mindestens 4 Zeichen"
+            placeholder="Mindestens 8 Zeichen"
             class="w-full px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 transition"
           />
         </div>
+      </div>
+    </section>
+
+    <section class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div class="p-6 border-b border-gray-50 flex justify-between items-center">
+        <div>
+          <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+            <span>🏷️</span> Barcode-Login
+          </h2>
+          <p class="text-xs text-gray-500 mt-1">
+            Anmeldung über deinen persönlichen Barcode zulassen.
+          </p>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" v-model="formData.barcodeLoginEnabled" class="sr-only peer" />
+          <div
+            class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"
+          ></div>
+        </label>
+      </div>
+
+      <div v-if="formData.barcodeLoginEnabled" class="p-6 bg-amber-50 border-t border-amber-100">
+        <div class="flex gap-3">
+          <span class="text-xl">⚠️</span>
+          <div>
+            <h4 class="text-sm font-bold text-amber-900 uppercase tracking-wide">
+              Sicherheitshinweis zum Barcode
+            </h4>
+            <p class="text-sm text-amber-800 mt-1 leading-relaxed">
+              Ein Barcode kann leicht kopiert oder abfotografiert werden. Mit aktiviertem
+              Barcode-Login ist **keine weitere PIN- oder Passworteingabe** am Terminal
+              erforderlich. Behandle deinen Barcode wie einen physischen Schlüssel und deaktiviere
+              diese Funktion sofort, solltest du deine Karte verlieren.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div v-else class="p-6 bg-gray-50 text-sm text-gray-500 italic">
+        Barcode-Login ist aktuell deaktiviert.
       </div>
     </section>
 
@@ -122,7 +161,7 @@
         Abbrechen
       </button>
       <button
-        @click="handleUpdate"
+        @click="handleSelfUpdate"
         :disabled="!isDirty || !isValid"
         class="px-8 py-2 bg-emerald-600 text-white rounded-xl font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-700 disabled:opacity-50 disabled:shadow-none transition"
       >
@@ -154,6 +193,7 @@ const formData = ref({
   newPin: '',
   pinEnabled: false,
   passwordlessLoginEnabled: false,
+  barcodeLoginEnabled: false,
 })
 
 const originalData = ref<any>(null)
@@ -166,13 +206,14 @@ const isDirty = computed(() => {
     formData.value.newPassword !== '' ||
     formData.value.newPin !== '' ||
     formData.value.pinEnabled !== originalData.value.pinEnabled ||
-    formData.value.passwordlessLoginEnabled !== originalData.value.passwordlessLoginEnabled
+    formData.value.passwordlessLoginEnabled !== originalData.value.passwordlessLoginEnabled ||
+    formData.value.barcodeLoginEnabled !== originalData.value.barcodeLoginEnabled
   )
 })
 
-// Validierung der Eingaben
+// Validierung der Eingaben (an Java DTO angepasst: PW min 8)
 const isValid = computed(() => {
-  const pwValid = formData.value.newPassword === '' || formData.value.newPassword.length >= 4
+  const pwValid = formData.value.newPassword === '' || formData.value.newPassword.length >= 8
   const pinValid = formData.value.newPin === '' || /^\d{4,6}$/.test(formData.value.newPin)
   return pwValid && pinValid
 })
@@ -183,6 +224,7 @@ const loadUserData = async () => {
     originalData.value = data
     formData.value.pinEnabled = data.pinEnabled
     formData.value.passwordlessLoginEnabled = data.passwordlessLoginEnabled
+    formData.value.barcodeLoginEnabled = data.barcodeLoginEnabled || false
     formData.value.newPassword = ''
     formData.value.newPin = ''
   } catch (error) {
@@ -190,16 +232,30 @@ const loadUserData = async () => {
   }
 }
 
-const handleUpdate = async () => {
+const handleSelfUpdate = async () => {
   try {
-    const payload = {
-      newPassword: formData.value.newPassword || null,
-      newPin: formData.value.newPin || null,
-      pinEnabled: formData.value.pinEnabled,
-      passwordlessLoginEnabled: formData.value.passwordlessLoginEnabled,
+    // Schritt 1: Wir extrahieren NUR die Werte, die wir brauchen, in lokale Variablen
+    const pEnabled = !!formData.value.pinEnabled
+    const pLess = !!formData.value.passwordlessLoginEnabled
+    const bEnabled = !!formData.value.barcodeLoginEnabled
+    const pWord = formData.value.newPassword?.trim() || null
+    const pin = formData.value.newPin?.trim() || null
+
+    // Schritt 2: Wir bauen ein absolut frisches Objekt
+    const cleanPayload = {
+      newPassword: pWord,
+      newPin: pin,
+      pinEnabled: pEnabled,
+      passwordlessLoginEnabled: pLess,
+      barcodeLoginEnabled: bEnabled,
     }
 
-    await apiClient.put('/api/users/me', payload)
+    // Schritt 3: Debug-Check (Schau in die Konsole!)
+    console.log('Raw Payload:', cleanPayload)
+
+    // Schritt 4: Wir senden das Objekt, aber zur Sicherheit "entkoppelt"
+    await apiClient.put('/api/users/me', JSON.parse(JSON.stringify(cleanPayload)))
+
     showStatus('Profil erfolgreich aktualisiert!', 'success')
     await loadUserData()
   } catch (error: any) {

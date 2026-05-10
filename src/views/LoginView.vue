@@ -1,11 +1,11 @@
 <script lang="ts" setup>
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 import apiClient from '@/api/client'
 import Numpad from '@/components/Numpad.vue'
-
 import { useKeyboardStore } from '@/stores/keyboard'
+
 const kbStore = useKeyboardStore()
 
 const openKb = (id: string, currentVal: string) => {
@@ -23,9 +23,57 @@ const navigationHistory = ref<any[]>([])
 
 // Auth States
 const showPinModal = ref(false)
-const isLoggingIn = ref(false) // Status für automatischen Passwordless-Login
+const isLoggingIn = ref(false) // Status für automatischen Passwordless-/Barcode-Login
 const pinValue = ref('')
 const selectedUsername = ref('')
+
+// --- BARCODE LOGIC ---
+const isBarcodeEnabled = ref(false)
+const barcodeBuffer = ref('')
+const lastKeyTime = ref(0)
+
+const handleBarcodeLogin = async (barcode: string) => {
+  isLoggingIn.value = true
+  error.value = ''
+  try {
+    const { data } = await apiClient.post('/auth/barcode/login', { barcode })
+
+    // BEREINIGT: setTokens erwartet das komplette data-Objekt!
+    authStore.setTokens(data)
+
+    await authStore.fetchProfile()
+    isLoggingIn.value = false // Spinner stoppen, bevor wir weiterleiten
+    router.push('/')
+  } catch (e: any) {
+    isLoggingIn.value = false
+    error.value = e.response?.status === 403 ? 'Barcode-Login deaktiviert.' : 'Ungültiger Barcode.'
+  }
+}
+
+const handleGlobalKeyDown = (event: KeyboardEvent) => {
+  if (!isBarcodeEnabled.value) return
+
+  // Ignorieren, wenn in einem Input getippt wird
+  if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement)
+    return
+
+  const currentTime = Date.now()
+  // Wenn zu viel Zeit zwischen Tastenschlägen vergeht, Buffer löschen (Mensch vs. Scanner)
+  if (currentTime - lastKeyTime.value > 50) {
+    barcodeBuffer.value = ''
+  }
+
+  if (event.key === 'Enter') {
+    if (barcodeBuffer.value.length > 2) {
+      handleBarcodeLogin(barcodeBuffer.value)
+    }
+    barcodeBuffer.value = ''
+  } else if (event.key.length === 1) {
+    barcodeBuffer.value += event.key
+  }
+  lastKeyTime.value = currentTime
+}
+// --- END BARCODE LOGIC ---
 
 const form = reactive({
   username: '',
@@ -35,6 +83,9 @@ const form = reactive({
 const checkQuickLogin = async () => {
   try {
     const { data: settings } = await apiClient.get('/api/settings')
+
+    isBarcodeEnabled.value = settings.allowBarcodeLogin
+
     if (settings.quickLogin) {
       const { data: tree } = await apiClient.get('/api/org-units/tree')
       if (tree && tree.length > 0) {
@@ -58,19 +109,12 @@ const goBack = () => {
   }
 }
 
-/**
- * Kernlogik: Der Weg des geringsten Widerstands
- * 1. Passwortlos (mTLS) ? -> Sofort Login
- * 2. PIN möglich? -> Zeige Numpad
- * 3. Sonst -> Manuelles Passwort
- */
 const selectUser = async (username: string) => {
   selectedUsername.value = username
   error.value = ''
   isLoggingIn.value = true
 
   try {
-    // SCHRITT 1: Prüfen auf Passwortlosen Login (mTLS)
     const { data: isPasswordlessPossible } = await apiClient.get(
       `/auth/passwordless/available/${username}`,
     )
@@ -80,7 +124,6 @@ const selectUser = async (username: string) => {
       return
     }
 
-    // SCHRITT 2: Prüfen ob PIN-Login möglich ist
     const { data: isPinPossible } = await apiClient.get(`/auth/pin/available/${username}`)
 
     isLoggingIn.value = false
@@ -91,7 +134,6 @@ const selectUser = async (username: string) => {
       switchToManual(username)
     }
   } catch (e) {
-    // Fallback auf Passwort bei Fehlern (z.B. 403 weil kein Trusted Device)
     isLoggingIn.value = false
     switchToManual(username)
   }
@@ -99,8 +141,8 @@ const selectUser = async (username: string) => {
 
 const handlePasswordlessLogin = async (username: string) => {
   try {
-    // Ruft authStore.passwordlessLogin auf (muss dort POST /auth/passwordless/passwordless triggern)
     await authStore.passwordlessLogin(username)
+    isLoggingIn.value = false
     router.push('/')
   } catch (e) {
     isLoggingIn.value = false
@@ -112,7 +154,6 @@ const switchToManual = (username: string) => {
   form.username = username
   isManualMode.value = true
   showPinModal.value = false
-  // Kleiner Delay damit das Input-Feld gerendert ist
   setTimeout(() => {
     const el = document.getElementById('password-field')
     el?.focus()
@@ -147,11 +188,22 @@ async function submit() {
   }
 }
 
-onMounted(checkQuickLogin)
+onMounted(() => {
+  checkQuickLogin()
+  window.addEventListener('keydown', handleGlobalKeyDown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleGlobalKeyDown)
+})
 </script>
 
 <template>
   <div class="login-container">
+    <div v-if="isBarcodeEnabled" class="barcode-status">
+      <span class="status-dot"></span> Barcode-Scanner aktiv
+    </div>
+
     <div class="login-card">
       <h1>Willkommen</h1>
       <p class="subtitle">
@@ -163,7 +215,7 @@ onMounted(checkQuickLogin)
         <p>Prüfe Identität...</p>
       </div>
 
-      <div v-if="!isManualMode && hasQuickLogin" class="quick-login-content">
+      <div v-if="!isManualMode && hasQuickLogin && !isLoggingIn" class="quick-login-content">
         <div class="tree-nav">
           <button v-if="navigationHistory.length > 0" class="back-link" @click="goBack">
             ← Zurück
@@ -193,7 +245,7 @@ onMounted(checkQuickLogin)
         </div>
       </div>
 
-      <form v-else class="login-form" @submit.prevent="submit">
+      <form v-else-if="!isLoggingIn" class="login-form" @submit.prevent="submit">
         <div class="input-group">
           <label>Nutzername</label>
           <input
@@ -222,7 +274,7 @@ onMounted(checkQuickLogin)
 
       <p v-if="error" class="error-msg">{{ error }}</p>
 
-      <div v-if="hasQuickLogin" class="mode-switch">
+      <div v-if="hasQuickLogin && !isLoggingIn" class="mode-switch">
         <button class="btn-switch" @click="isManualMode = !isManualMode">
           {{ isManualMode ? 'Zur Schnellauswahl' : 'Manuelle Anmeldung' }}
         </button>
@@ -249,6 +301,49 @@ onMounted(checkQuickLogin)
 
 <style scoped>
 /* Ergänzende Styles für automatischen Login-Status */
+/* Barcode Status Style (passt zum bestehenden UI) */
+.barcode-status {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: white;
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  color: #4a5568;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid #edf2f7;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #48bb78;
+  border-radius: 50%;
+  box-shadow: 0 0 0 rgba(72, 187, 120, 0.4);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(72, 187, 120, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 6px rgba(72, 187, 120, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(72, 187, 120, 0);
+  }
+}
+
+/* DEINE ORIGINAL STYLES */
 .auto-login-overlay {
   padding: 2rem;
   display: flex;
@@ -355,6 +450,7 @@ onMounted(checkQuickLogin)
   align-items: center;
   min-height: 20vh;
   padding: 1rem;
+  position: relative;
 }
 
 .login-card {
