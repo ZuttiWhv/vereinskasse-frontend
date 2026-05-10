@@ -8,7 +8,8 @@ interface UserProfile {
   username: string
   balance: number
   pinEnabled: boolean
-  passwordlessLoginEnabled: boolean // NEU: Damit das Profil vollständig ist
+  passwordlessLoginEnabled: boolean
+  barcodeLoginEnabled: boolean // NEU: Ergänzt
   roles: string[]
 }
 
@@ -35,6 +36,16 @@ export const useAuthStore = defineStore('auth', {
 
   actions: {
     /**
+     * Setzt die Tokens im State und LocalStorage
+     */
+    setTokens(data: LoginResponse) {
+      this.accessToken = data.accessToken
+      this.refreshToken = data.refreshToken
+      localStorage.setItem('access_token', data.accessToken)
+      localStorage.setItem('refresh_token', data.refreshToken)
+    },
+
+    /**
      * Standard Login mit Passwort
      */
     async login(credentials: { username: string; password: string }) {
@@ -42,7 +53,7 @@ export const useAuthStore = defineStore('auth', {
       try {
         const { data } = await apiClient.post<LoginResponse>('/auth/login', credentials)
         this.setTokens(data)
-        apiClient.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`
+        // KEIN apiClient.defaults mehr! Der Interceptor übernimmt ab hier.
         await this.fetchProfile()
         return true
       } catch (error) {
@@ -61,7 +72,6 @@ export const useAuthStore = defineStore('auth', {
       try {
         const { data } = await apiClient.post<LoginResponse>('/auth/pin/login', credentials)
         this.setTokens(data)
-        apiClient.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`
         await this.fetchProfile()
         return true
       } catch (error) {
@@ -73,19 +83,15 @@ export const useAuthStore = defineStore('auth', {
     },
 
     /**
-     * NEU: Passwortloser Login (mTLS)
-     * Wird von der LoginView aufgerufen, wenn mTLS verfügbar ist.
+     * Passwortloser Login (mTLS)
      */
     async passwordlessLogin(username: string) {
       this.isLoading = true
       try {
-        // Entspricht dem Endpunkt in deinem PasswordlessAuthController
         const { data } = await apiClient.post<LoginResponse>('/auth/passwordless/passwordless', {
           username: username,
         })
-
         this.setTokens(data)
-        apiClient.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`
         await this.fetchProfile()
         return true
       } catch (error) {
@@ -96,12 +102,9 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    async fetchAuthorities() {
-      if (this.isAuthenticated) {
-        await this.fetchProfile()
-      }
-    },
-
+    /**
+     * Lädt das aktuelle Nutzerprofil und speichert es im State
+     */
     async fetchProfile() {
       if (!this.accessToken) return
 
@@ -114,7 +117,8 @@ export const useAuthStore = defineStore('auth', {
           username: data.username,
           balance: data.balance,
           pinEnabled: data.pinEnabled,
-          passwordlessLoginEnabled: data.passwordlessLoginEnabled, // NEU: Mapping ergänzt
+          passwordlessLoginEnabled: data.passwordlessLoginEnabled,
+          barcodeLoginEnabled: data.barcodeLoginEnabled || false, // Mapping korrigiert
           roles: data.roles || [],
         }
 
@@ -128,13 +132,9 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    setTokens(data: LoginResponse) {
-      this.accessToken = data.accessToken
-      this.refreshToken = data.refreshToken
-      localStorage.setItem('access_token', data.accessToken)
-      localStorage.setItem('refresh_token', data.refreshToken)
-    },
-
+    /**
+     * Löscht alle Session-Daten
+     */
     logout() {
       this.accessToken = null
       this.refreshToken = null
@@ -144,24 +144,30 @@ export const useAuthStore = defineStore('auth', {
       localStorage.removeItem('refresh_token')
       localStorage.removeItem('user')
       localStorage.removeItem('authorities')
+
+      // Optional: Seite neu laden, um alle Axios-Instanz-Reste zu killen
+      // window.location.href = '/login'
     },
 
+    /**
+     * Erneuert die Tokens mittels Refresh-Token
+     */
     async refreshTokens(): Promise<string> {
       if (!this.refreshToken) {
         throw new Error('Kein Refresh-Token vorhanden')
       }
 
       try {
+        // Hier nutzen wir direkt axios, um Interceptor-Schleifen zu vermeiden
         const { data } = await axios.post<LoginResponse>('/auth/refresh', {
           refreshToken: this.refreshToken,
         })
 
         this.setTokens(data)
-        apiClient.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`
         return data.accessToken
       } catch (error) {
         console.error('Refresh fehlgeschlagen:', error)
-        this.logout() // Wichtig: Bei gescheitertem Refresh ausloggen
+        this.logout()
         throw error
       }
     },
