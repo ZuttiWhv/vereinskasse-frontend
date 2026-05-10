@@ -5,7 +5,6 @@ import { useAuthStore } from '@/stores/auth'
 declare module 'vue-router' {
   interface RouteMeta {
     requiresAuth?: boolean
-    // Wir erlauben hier einen String ODER ein Array von Strings
     requiredAuthorities?: string | string[]
   }
 }
@@ -27,7 +26,6 @@ const routes: RouteRecordRaw[] = [
     path: '/admin/categories',
     name: 'category-management',
     component: () => import('@/views/admin/CategoryManagement.vue'),
-    // HIER WAR DER FEHLER: Name muss zu RouteMeta passen
     meta: {
       requiresAuth: true,
       requiredAuthorities: ['WRITE_CATEGORY', 'DELETE_CATEGORY', 'READ_CATEGORY'],
@@ -43,7 +41,8 @@ const routes: RouteRecordRaw[] = [
     path: '/admin/settings',
     name: 'settings',
     component: () => import('@/views/admin/SettingsManagement.vue'),
-    meta: { requiresAuth: true, authority: 'ADMIN_SETTINGS' },
+    // KORRIGIERT: 'authority' zu 'requiredAuthorities' geändert
+    meta: { requiresAuth: true, requiredAuthorities: 'ADMIN_SETTINGS' },
   },
   {
     path: '/admin/products',
@@ -67,6 +66,7 @@ const routes: RouteRecordRaw[] = [
     path: '/profile',
     name: 'profile-settings',
     component: () => import('@/views/ProfileSettings.vue'),
+    meta: { requiresAuth: true },
   },
   {
     path: '/admin/ous',
@@ -118,9 +118,10 @@ router.beforeEach(async (to, from, next) => {
   }
 
   // C. Authorities laden (wichtig nach Page-Refresh)
+  // KORRIGIERT: fetchAuthorities existiert nicht mehr, daher fetchProfile nutzen
   if (authStore.isAuthenticated && authStore.authorities.length === 0) {
     try {
-      await authStore.fetchAuthorities()
+      await authStore.fetchProfile()
     } catch (error) {
       authStore.logout() // Token scheint ungültig
       return next({ name: 'login' })
