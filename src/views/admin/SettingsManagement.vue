@@ -7,23 +7,19 @@
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div class="md:col-span-2 space-y-6">
-        <!-- LOGIN FUNKTIONEN -->
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
-          <h2 class="text-lg font-semibold border-b pb-2 text-emerald-700">Login-Funktionen</h2>
+          <h2 class="text-lg font-semibold border-b pb-2 text-emerald-700">Login & Struktur</h2>
 
           <div class="space-y-6">
-            <!-- Quick Login -->
             <div class="flex items-center justify-between group">
-              <div class="flex flex-col flex-grow">
-                <div class="flex items-center gap-2">
-                  <span class="font-medium text-gray-700">Vereinfachtes Login (Quick-Login)</span>
-                </div>
+              <div class="flex flex-col grow">
+                <span class="font-medium text-gray-700">Vereinfachtes Login (Quick-Login)</span>
                 <p class="text-xs text-gray-500">Schnellauswahl von Abteilungen und Namen.</p>
               </div>
               <button
                 @click="settings.quickLogin = !settings.quickLogin"
                 :class="settings.quickLogin ? 'bg-emerald-500' : 'bg-gray-300'"
-                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
+                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
               >
                 <span
                   :class="settings.quickLogin ? 'translate-x-6' : 'translate-x-1'"
@@ -32,16 +28,15 @@
               </button>
             </div>
 
-            <!-- PIN Login -->
             <div class="flex items-center justify-between">
-              <div class="flex flex-col flex-grow">
+              <div class="flex flex-col grow">
                 <span class="font-medium text-gray-700">PIN-Login erlauben</span>
                 <p class="text-xs text-gray-500">Identifikation via 4- bis 6-stelliger PIN.</p>
               </div>
               <button
                 @click="settings.pinLogin = !settings.pinLogin"
                 :class="settings.pinLogin ? 'bg-emerald-500' : 'bg-gray-300'"
-                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
+                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
               >
                 <span
                   :class="settings.pinLogin ? 'translate-x-6' : 'translate-x-1'"
@@ -50,9 +45,8 @@
               </button>
             </div>
 
-            <!-- NEU: Barcode Login -->
             <div class="flex items-center justify-between">
-              <div class="flex flex-col flex-grow">
+              <div class="flex flex-col grow">
                 <div class="flex items-center gap-2">
                   <span class="font-medium text-gray-700">Barcode-Scanner Login</span>
                   <span
@@ -65,7 +59,7 @@
               <button
                 @click="settings.allowBarcodeLogin = !settings.allowBarcodeLogin"
                 :class="settings.allowBarcodeLogin ? 'bg-emerald-500' : 'bg-gray-300'"
-                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
+                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
               >
                 <span
                   :class="settings.allowBarcodeLogin ? 'translate-x-6' : 'translate-x-1'"
@@ -74,10 +68,34 @@
               </button>
             </div>
 
-            <!-- Passwortloser Login -->
             <div class="pt-4 border-t border-gray-50">
               <div class="flex items-center justify-between">
-                <div class="flex flex-col flex-grow">
+                <div class="flex flex-col grow">
+                  <span class="font-medium text-gray-700">User ohne Gruppe (OU)</span>
+                  <p class="text-xs text-gray-500">
+                    {{
+                      settings.showUserWithoutOuAsUser
+                        ? 'Als einzelne Benutzer anzeigen'
+                        : 'In Sammel-OU anzeigen'
+                    }}
+                  </p>
+                </div>
+                <button
+                  @click="settings.showUserWithoutOuAsUser = !settings.showUserWithoutOuAsUser"
+                  :class="settings.showUserWithoutOuAsUser ? 'bg-emerald-500' : 'bg-gray-300'"
+                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
+                >
+                  <span
+                    :class="settings.showUserWithoutOuAsUser ? 'translate-x-6' : 'translate-x-1'"
+                    class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                  />
+                </button>
+              </div>
+            </div>
+
+            <div class="pt-4 border-t border-gray-50">
+              <div class="flex items-center justify-between">
+                <div class="flex flex-col grow">
                   <div class="flex items-center gap-2">
                     <span class="font-medium text-gray-900">Passwortloser Login (mTLS)</span>
                     <span
@@ -90,7 +108,7 @@
                 <button
                   @click="settings.passwordlessLogin = !settings.passwordlessLogin"
                   :class="settings.passwordlessLogin ? 'bg-emerald-500' : 'bg-gray-300'"
-                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
+                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
                 >
                   <span
                     :class="settings.passwordlessLogin ? 'translate-x-6' : 'translate-x-1'"
@@ -102,11 +120,10 @@
           </div>
         </div>
 
-        <!-- NEU: DATEN & EXPORT -->
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
           <h2 class="text-lg font-semibold border-b pb-2 text-emerald-700">Daten & Export</h2>
           <div class="flex items-center justify-between">
-            <div class="flex flex-col flex-grow">
+            <div class="flex flex-col grow">
               <span class="font-medium text-gray-700">Mitglieder-Barcodes exportieren</span>
               <p class="text-xs text-gray-500">
                 Erzeugt eine PDF-Liste aller Mitglieder mit ihren scanbaren Codes.
@@ -121,7 +138,6 @@
           </div>
         </div>
 
-        <!-- LOGO UPLOAD -->
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
           <h2 class="text-lg font-semibold border-b pb-2 text-emerald-700">Vereinslogo</h2>
           <div class="flex items-center gap-6">
@@ -136,7 +152,7 @@
               />
               <span v-else class="text-gray-400 text-xs text-center px-2">Kein Logo</span>
             </div>
-            <div class="flex-grow space-y-2">
+            <div class="grow space-y-2">
               <label for="uploadLogoPath" class="block text-sm font-medium text-gray-700"
                 >Neues Logo hochladen</label
               >
@@ -151,7 +167,6 @@
           </div>
         </div>
 
-        <!-- FARBEN & NAME -->
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
           <h2 class="text-lg font-semibold border-b pb-2 text-emerald-700">Branding & Farben</h2>
           <div>
@@ -177,11 +192,44 @@
                 <input
                   v-model="settings.primaryColor"
                   type="text"
+                  class="grow px-2 py-2 border rounded-lg text-xs font-mono"
+                />
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1 text-xs"
+                >Sekundärfarbe</label
+              >
+              <div class="flex gap-2">
+                <input
+                  v-model="settings.secondaryColor"
+                  type="color"
+                  class="h-10 w-12 cursor-pointer border-none rounded"
+                />
+                <input
+                  v-model="settings.secondaryColor"
+                  type="text"
                   class="flex-grow px-2 py-2 border rounded-lg text-xs font-mono"
                 />
               </div>
             </div>
-            <!-- ... Sekundär- und Textfarbe analog ... -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1 text-xs"
+                >Nav Textfarbe</label
+              >
+              <div class="flex gap-2">
+                <input
+                  v-model="settings.navTextColor"
+                  type="color"
+                  class="h-10 w-12 cursor-pointer border-none rounded"
+                />
+                <input
+                  v-model="settings.navTextColor"
+                  type="text"
+                  class="grow px-2 py-2 border rounded-lg text-xs font-mono"
+                />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -196,11 +244,10 @@
         </div>
       </div>
 
-      <!-- LIVE VORSCHAU -->
       <div class="space-y-4">
-        <h2 class="text-lg font-semibold text-gray-800">Live-Vorschau</h2>
+        <h2 class="text-lg font-semibold text-gray-800 sticky top-4">Live-Vorschau</h2>
         <div
-          class="bg-gray-50 border rounded-xl p-4 pointer-events-none border-dashed border-gray-300"
+          class="bg-gray-50 border rounded-xl p-4 pointer-events-none border-dashed border-gray-300 sticky top-14"
         >
           <div
             :style="{ backgroundColor: settings.primaryColor, color: settings.navTextColor }"
@@ -222,6 +269,13 @@
               class="h-8 w-full rounded shadow-sm flex items-center justify-center text-[10px] font-bold"
             >
               Beispiel Button
+            </div>
+            <div class="pt-2 flex gap-1">
+              <div
+                :style="{ backgroundColor: settings.secondaryColor }"
+                class="h-4 w-4 rounded-full"
+              ></div>
+              <div class="h-2 w-1/2 bg-gray-50 rounded mt-1"></div>
             </div>
           </div>
         </div>
@@ -248,7 +302,8 @@ const settings = ref({
   quickLogin: false,
   pinLogin: false,
   passwordlessLogin: false,
-  allowBarcodeLogin: false, // NEU
+  allowBarcodeLogin: false,
+  showUserWithoutOuAsUser: true,
 })
 
 const fetchSettings = async () => {
@@ -262,9 +317,9 @@ const fetchSettings = async () => {
 
 const downloadBarcodePdf = async () => {
   try {
-       const response = await apiClient.get('/api/export/user-barcodes-pdf', {
-         responseType: 'blob',
-       })
+    const response = await apiClient.get('/api/export/user-barcodes-pdf', {
+      responseType: 'blob',
+    })
     const url = window.URL.createObjectURL(new Blob([response.data]))
     const link = document.createElement('a')
     link.href = url
@@ -273,7 +328,7 @@ const downloadBarcodePdf = async () => {
     link.click()
     link.remove()
   } catch (error) {
-    alert('Export fehlgeschlagen. Haben Sie Admin-Rechte?')
+    alert('Export fehlgeschlagen.')
   }
 }
 
@@ -307,6 +362,7 @@ const saveSettings = async () => {
   isSaving.value = true
   try {
     await apiClient.put('/api/settings', settings.value)
+    // Seite neu laden, um die neuen CSS-Variablen/Branding überall anzuwenden
     globalThis.location.reload()
   } catch (error) {
     alert('Fehler beim Speichern.')

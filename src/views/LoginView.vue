@@ -23,11 +23,11 @@ const navigationHistory = ref<any[]>([])
 
 // Auth States
 const showPinModal = ref(false)
-const isLoggingIn = ref(false) // Status für automatischen Passwordless-/Barcode-Login
+const isLoggingIn = ref(false)
 const pinValue = ref('')
 const selectedUsername = ref('')
 
-// --- BARCODE LOGIC ---
+// --- BARCODE LOGIC (Unverändert) ---
 const isBarcodeEnabled = ref(false)
 const barcodeBuffer = ref('')
 const lastKeyTime = ref(0)
@@ -37,12 +37,9 @@ const handleBarcodeLogin = async (barcode: string) => {
   error.value = ''
   try {
     const { data } = await apiClient.post('/auth/barcode/login', { barcode })
-
-    // BEREINIGT: setTokens erwartet das komplette data-Objekt!
     authStore.setTokens(data)
-
     await authStore.fetchProfile()
-    isLoggingIn.value = false // Spinner stoppen, bevor wir weiterleiten
+    isLoggingIn.value = false
     router.push('/')
   } catch (e: any) {
     isLoggingIn.value = false
@@ -52,43 +49,26 @@ const handleBarcodeLogin = async (barcode: string) => {
 
 const handleGlobalKeyDown = (event: KeyboardEvent) => {
   if (!isBarcodeEnabled.value) return
-
-  // Ignorieren, wenn in einem Input getippt wird
-  if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement)
-    return
-
+  if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return
   const currentTime = Date.now()
-  // Wenn zu viel Zeit zwischen Tastenschlägen vergeht, Buffer löschen (Mensch vs. Scanner)
-  if (currentTime - lastKeyTime.value > 50) {
-    barcodeBuffer.value = ''
-  }
-
+  if (currentTime - lastKeyTime.value > 50) { barcodeBuffer.value = '' }
   if (event.key === 'Enter') {
-    if (barcodeBuffer.value.length > 2) {
-      handleBarcodeLogin(barcodeBuffer.value)
-    }
+    if (barcodeBuffer.value.length > 2) { handleBarcodeLogin(barcodeBuffer.value) }
     barcodeBuffer.value = ''
-  } else if (event.key.length === 1) {
-    barcodeBuffer.value += event.key
-  }
+  } else if (event.key.length === 1) { barcodeBuffer.value += event.key }
   lastKeyTime.value = currentTime
 }
-// --- END BARCODE LOGIC ---
 
-const form = reactive({
-  username: '',
-  password: '',
-})
-
+// --- QUICK LOGIN LOGIC ---
 const checkQuickLogin = async () => {
   try {
     const { data: settings } = await apiClient.get('/api/settings')
-
     isBarcodeEnabled.value = settings.allowBarcodeLogin
 
     if (settings.quickLogin) {
       const { data: tree } = await apiClient.get('/api/org-units/tree')
       if (tree && tree.length > 0) {
+        // Wir initialisieren den Start-Level mit dem Ergebnis vom Backend
         currentLevel.value = { subUnits: tree, usernames: [], name: 'Start' }
         hasQuickLogin.value = true
       }
@@ -98,9 +78,16 @@ const checkQuickLogin = async () => {
   }
 }
 
-const selectUnit = (unit: any) => {
-  navigationHistory.value.push({ ...currentLevel.value })
-  currentLevel.value = unit
+// NEU: Diese Methode entscheidet nun anhand von isUser, was passiert
+const handleItemClick = (item: any) => {
+  if (item.isUser) {
+    // Wenn es ein flacher User-Eintrag ist, direkt zum Login-Prozess
+    selectUser(item.name)
+  } else {
+    // Wenn es eine OU ist, tiefer navigieren
+    navigationHistory.value.push({ ...currentLevel.value })
+    currentLevel.value = item
+  }
 }
 
 const goBack = () => {
@@ -115,17 +102,13 @@ const selectUser = async (username: string) => {
   isLoggingIn.value = true
 
   try {
-    const { data: isPasswordlessPossible } = await apiClient.get(
-      `/auth/passwordless/available/${username}`,
-    )
-
+    const { data: isPasswordlessPossible } = await apiClient.get(`/auth/passwordless/available/${username}`)
     if (isPasswordlessPossible) {
       await handlePasswordlessLogin(username)
       return
     }
 
     const { data: isPinPossible } = await apiClient.get(`/auth/pin/available/${username}`)
-
     isLoggingIn.value = false
     if (isPinPossible) {
       pinValue.value = ''
@@ -155,47 +138,35 @@ const switchToManual = (username: string) => {
   isManualMode.value = true
   showPinModal.value = false
   setTimeout(() => {
-    const el = document.getElementById('password-field')
-    el?.focus()
+    document.getElementById('password-field')?.focus()
   }, 100)
 }
 
 const handlePinComplete = async (pin: string) => {
   error.value = ''
   try {
-    await authStore.pinLogin({
-      username: selectedUsername.value,
-      pin: pin,
-    })
+    await authStore.pinLogin({ username: selectedUsername.value, pin })
     showPinModal.value = false
     router.push('/')
   } catch (e: any) {
     pinValue.value = ''
-    if (e.response?.status === 429) {
-      error.value = 'Zu viele Versuche. Bitte warten.'
-    } else {
-      error.value = 'PIN falsch oder Anmeldung fehlgeschlagen.'
-    }
+    error.value = e.response?.status === 429 ? 'Zu viele Versuche.' : 'PIN falsch.'
   }
 }
 
+const form = reactive({ username: '', password: '' })
 async function submit() {
   try {
     await authStore.login(form)
     router.push('/')
-  } catch (e) {
-    error.value = 'Anmeldung fehlgeschlagen'
-  }
+  } catch (e) { error.value = 'Anmeldung fehlgeschlagen' }
 }
 
 onMounted(() => {
   checkQuickLogin()
   window.addEventListener('keydown', handleGlobalKeyDown)
 })
-
-onUnmounted(() => {
-  window.removeEventListener('keydown', handleGlobalKeyDown)
-})
+onUnmounted(() => { window.removeEventListener('keydown', handleGlobalKeyDown) })
 </script>
 
 <template>
@@ -206,9 +177,7 @@ onUnmounted(() => {
 
     <div class="login-card">
       <h1>Willkommen</h1>
-      <p class="subtitle">
-        {{ isManualMode ? 'Bitte melde dich an' : 'Schnellauswahl nutzen' }}
-      </p>
+      <p class="subtitle">{{ isManualMode ? 'Bitte melde dich an' : 'Schnellauswahl nutzen' }}</p>
 
       <div v-if="isLoggingIn" class="auto-login-overlay">
         <div class="spinner"></div>
@@ -217,26 +186,27 @@ onUnmounted(() => {
 
       <div v-if="!isManualMode && hasQuickLogin && !isLoggingIn" class="quick-login-content">
         <div class="tree-nav">
-          <button v-if="navigationHistory.length > 0" class="back-link" @click="goBack">
-            ← Zurück
-          </button>
+          <button v-if="navigationHistory.length > 0" class="back-link" @click="goBack">← Zurück</button>
           <span class="current-node">{{ currentLevel?.name }}</span>
         </div>
 
         <div class="selection-scroll-area">
           <div class="selection-grid">
             <button
-              v-for="unit in currentLevel?.subUnits"
-              :key="unit.id"
+              v-for="item in currentLevel?.subUnits"
+              :key="item.id || item.name"
               class="grid-item"
-              @click="selectUnit(unit)"
+              :class="{ 'user-item': item.isUser }"
+              @click="handleItemClick(item)"
             >
-              <span class="icon">📁</span> {{ unit.name }}
+              <span class="icon">{{ item.isUser ? '👤' : '📁' }}</span>
+              {{ item.name }}
             </button>
+
             <button
               v-for="user in currentLevel?.usernames"
               :key="user"
-              class="grid-item"
+              class="grid-item user-item"
               @click="selectUser(user)"
             >
               <span class="icon">👤</span> {{ user }}
@@ -248,32 +218,16 @@ onUnmounted(() => {
       <form v-else-if="!isLoggingIn" class="login-form" @submit.prevent="submit">
         <div class="input-group">
           <label>Nutzername</label>
-          <input
-            id="username-field"
-            v-model="form.username"
-            placeholder="Dein Name"
-            required
-            @focus="openKb('username-field', form.username)"
-          />
+          <input id="username-field" v-model="form.username" required @focus="openKb('username-field', form.username)" />
         </div>
         <div class="input-group">
           <label>Passwort</label>
-          <input
-            id="password-field"
-            v-model="form.password"
-            placeholder="••••••••"
-            required
-            type="password"
-            @focus="openKb('password-field', form.password)"
-          />
+          <input id="password-field" v-model="form.password" required type="password" @focus="openKb('password-field', form.password)" />
         </div>
-        <button :disabled="authStore.isLoading" class="btn-login" type="submit">
-          {{ authStore.isLoading ? 'Verbindung...' : 'Login' }}
-        </button>
+        <button :disabled="authStore.isLoading" class="btn-login" type="submit">Login</button>
       </form>
 
       <p v-if="error" class="error-msg">{{ error }}</p>
-
       <div v-if="hasQuickLogin && !isLoggingIn" class="mode-switch">
         <button class="btn-switch" @click="isManualMode = !isManualMode">
           {{ isManualMode ? 'Zur Schnellauswahl' : 'Manuelle Anmeldung' }}
@@ -284,14 +238,9 @@ onUnmounted(() => {
     <div v-if="showPinModal" class="pin-overlay">
       <div class="pin-modal animate-pop">
         <h3>Hallo {{ selectedUsername }}</h3>
-        <p>Gib deine PIN ein</p>
-
         <Numpad v-model="pinValue" :maxLength="6" @complete="handlePinComplete" />
-
         <div class="pin-footer-actions">
-          <button class="btn-abort" @click="switchToManual(selectedUsername)">
-            Stattdessen mit Passwort anmelden
-          </button>
+          <button class="btn-abort" @click="switchToManual(selectedUsername)">Passwort nutzen</button>
           <button class="btn-close" @click="showPinModal = false">Abbrechen</button>
         </div>
       </div>
@@ -300,8 +249,12 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* Ergänzende Styles für automatischen Login-Status */
-/* Barcode Status Style (passt zum bestehenden UI) */
+
+.user-item {
+  background: #ebf8ff !important; /* Leicht bläulich für User */
+  border-color: #bee3f8 !important;
+}
+
 .barcode-status {
   position: absolute;
   top: 1rem;
