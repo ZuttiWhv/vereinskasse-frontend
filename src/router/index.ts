@@ -45,6 +45,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, requiredAuthorities: 'WRITE_SETTINGS' },
   },
   {
+    path: '/admin/vouchers',
+    name: 'AdminVouchers',
+    component: () => import('@/views/admin/VoucherStatsView.vue'),
+    meta: { requiresAuth: true, requiredAuthorities: 'READ_ALL_SALES' },
+  },
+  {
     path: '/admin/products',
     name: 'product-management',
     component: () => import('@/views/admin/ProductManagement.vue'),
