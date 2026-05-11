@@ -89,6 +89,13 @@
                   >Abrechnungsgruppen</router-link
                 >
                 <router-link
+                  v-if="authStore.hasAuthority('READ_ALL_SALES')"
+                  to="/admin/vouchers"
+                  class="drop-item"
+                  @click="isAdminMenuOpen = false"
+                  >Voucher-Auswertung</router-link
+                >
+                <router-link
                   v-if="authStore.hasAuthority('WRITE_DEVICE')"
                   to="/admin/devices"
                   class="drop-item"
