@@ -42,7 +42,7 @@ const routes: RouteRecordRaw[] = [
     name: 'settings',
     component: () => import('@/views/admin/SettingsManagement.vue'),
     // KORRIGIERT: 'authority' zu 'requiredAuthorities' geändert
-    meta: { requiresAuth: true, requiredAuthorities: 'ADMIN_SETTINGS' },
+    meta: { requiresAuth: true, requiredAuthorities: 'WRITE_SETTINGS' },
   },
   {
     path: '/admin/products',
