@@ -31,13 +31,15 @@ const issueReason = ref('')
 // --- COMPUTED ---
 const voucherForSelectedProduct = computed(() => {
   if (!selectedProduct.value) return null
-  return availableVouchers.value.find((v) => v.productId === selectedProduct.value!.id)
+  return availableVouchers.value.find(
+    (v: PrepaidVoucherDTO) => v.productId === selectedProduct.value!.id,
+  )
 })
 
 const getVoucherCountForProduct = (productId: number) => {
   return availableVouchers.value
-    .filter((v) => v.productId === productId)
-    .reduce((sum, v) => sum + v.remainingCount, 0)
+    .filter((v: PrepaidVoucherDTO) => v.productId === productId)
+    .reduce((sum, v: PrepaidVoucherDTO) => sum + v.remainingCount, 0)
 }
 
 // --- BARCODE LOGIK ---
@@ -82,27 +84,27 @@ let inactivityTimer: number | null = null
 const INACTIVITY_TIMEOUT_MS = 30000
 
 const resetInactivityTimer = () => {
-  if (inactivityTimer) window.clearTimeout(inactivityTimer)
-  inactivityTimer = window.setTimeout(() => {
+  if (inactivityTimer) globalThis.clearTimeout(inactivityTimer)
+  inactivityTimer = globalThis.setTimeout(() => {
     authStore.logout()
     router.push('/login')
   }, INACTIVITY_TIMEOUT_MS)
 }
 
 const setupActivityListeners = () => {
-  window.addEventListener('mousemove', resetInactivityTimer)
-  window.addEventListener('touchstart', resetInactivityTimer)
-  window.addEventListener('click', resetInactivityTimer)
-  window.addEventListener('keydown', handleGlobalKeyDown)
+  globalThis.addEventListener('mousemove', resetInactivityTimer)
+  globalThis.addEventListener('touchstart', resetInactivityTimer)
+  globalThis.addEventListener('click', resetInactivityTimer)
+  globalThis.addEventListener('keydown', handleGlobalKeyDown)
   resetInactivityTimer()
 }
 
 const cleanupActivityListeners = () => {
-  window.removeEventListener('mousemove', resetInactivityTimer)
-  window.removeEventListener('touchstart', resetInactivityTimer)
-  window.removeEventListener('click', resetInactivityTimer)
-  window.removeEventListener('keydown', handleGlobalKeyDown)
-  if (inactivityTimer) window.clearTimeout(inactivityTimer)
+  globalThis.removeEventListener('mousemove', resetInactivityTimer)
+  globalThis.removeEventListener('touchstart', resetInactivityTimer)
+  globalThis.removeEventListener('click', resetInactivityTimer)
+  globalThis.removeEventListener('keydown', handleGlobalKeyDown)
+  if (inactivityTimer) globalThis.clearTimeout(inactivityTimer)
 }
 
 // --- API LOGIK ---

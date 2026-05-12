@@ -67,6 +67,13 @@ export interface SaleRequest {
   userId?: number // Optional, da nur Admins (WRITE_ALL_SALES) dies setzen
 }
 
+export interface PrepaidVoucherDTO {
+  productId: number
+  giverName: string
+  reason?: string
+  remainingCount: number
+}
+
 export interface UserBalance {
   userId: number
   username: string
