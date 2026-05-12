@@ -17,6 +17,8 @@
                 <p class="text-xs text-gray-500">Schnellauswahl von Abteilungen und Namen.</p>
               </div>
               <button
+                type="button"
+                aria-label="Quick-Login umschalten"
                 @click="settings.quickLogin = !settings.quickLogin"
                 :class="settings.quickLogin ? 'bg-emerald-500' : 'bg-gray-300'"
                 class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
@@ -34,6 +36,8 @@
                 <p class="text-xs text-gray-500">Identifikation via 4- bis 6-stelliger PIN.</p>
               </div>
               <button
+                type="button"
+                aria-label="PIN-Login umschalten"
                 @click="settings.pinLogin = !settings.pinLogin"
                 :class="settings.pinLogin ? 'bg-emerald-500' : 'bg-gray-300'"
                 class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
@@ -57,6 +61,8 @@
                 <p class="text-xs text-gray-500">Erlaubt Login via Barcode oder RFID-Chip.</p>
               </div>
               <button
+                type="button"
+                aria-label="Barcode-Login umschalten"
                 @click="settings.allowBarcodeLogin = !settings.allowBarcodeLogin"
                 :class="settings.allowBarcodeLogin ? 'bg-emerald-500' : 'bg-gray-300'"
                 class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
@@ -81,6 +87,8 @@
                   </p>
                 </div>
                 <button
+                  type="button"
+                  aria-label="Darstellung User ohne Gruppe umschalten"
                   @click="settings.showUserWithoutOuAsUser = !settings.showUserWithoutOuAsUser"
                   :class="settings.showUserWithoutOuAsUser ? 'bg-emerald-500' : 'bg-gray-300'"
                   class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
@@ -106,6 +114,8 @@
                   <p class="text-xs text-gray-500">Login rein über Zertifikat ohne Abfrage.</p>
                 </div>
                 <button
+                  type="button"
+                  aria-label="Passwortloser Login umschalten"
                   @click="settings.passwordlessLogin = !settings.passwordlessLogin"
                   :class="settings.passwordlessLogin ? 'bg-emerald-500' : 'bg-gray-300'"
                   class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
@@ -130,6 +140,7 @@
               </p>
             </div>
             <button
+              type="button"
               @click="downloadBarcodePdf"
               class="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition text-sm font-semibold"
             >
@@ -170,61 +181,85 @@
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
           <h2 class="text-lg font-semibold border-b pb-2 text-emerald-700">Branding & Farben</h2>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Vereinsname</label>
+            <label for="nameInput" class="block text-sm font-medium text-gray-700 mb-1"
+              >Vereinsname</label
+            >
             <input
+              id="nameInput"
               v-model="settings.vereinName"
-              @focus="kbStore.open('name', settings.vereinName)"
+              :class="{ 'input-keyboard-active': kbStore.activeInputId === 'nameInput' }"
+              @focus="kbStore.open('nameInput', 'default', settings.vereinName)"
               type="text"
               class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1 text-xs"
+              <label
+                for="primaryColorPicker"
+                class="block text-sm font-medium text-gray-700 mb-1 text-xs"
                 >Primärfarbe</label
               >
               <div class="flex gap-2">
                 <input
+                  id="primaryColorPicker"
                   v-model="settings.primaryColor"
                   type="color"
                   class="h-10 w-12 cursor-pointer border-none rounded"
                 />
                 <input
+                  id="primaryColortxt"
                   v-model="settings.primaryColor"
+                  @focus="kbStore.open('primaryColortxt', 'default', settings.primaryColor)"
+                  :class="{ 'input-keyboard-active': kbStore.activeInputId === 'primaryColortxt' }"
                   type="text"
                   class="grow px-2 py-2 border rounded-lg text-xs font-mono"
                 />
               </div>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1 text-xs"
+              <label
+                for="secondaryColorPicker"
+                class="block text-sm font-medium text-gray-700 mb-1 text-xs"
                 >Sekundärfarbe</label
               >
               <div class="flex gap-2">
                 <input
+                  id="secondaryColorPicker"
                   v-model="settings.secondaryColor"
                   type="color"
                   class="h-10 w-12 cursor-pointer border-none rounded"
                 />
                 <input
+                  id="secondaryColortxt"
                   v-model="settings.secondaryColor"
+                  @focus="kbStore.open('secondaryColortxt', 'default', settings.secondaryColor)"
+                  :class="{
+                    'input-keyboard-active': kbStore.activeInputId === 'secondaryColortxt',
+                  }"
                   type="text"
-                  class="flex-grow px-2 py-2 border rounded-lg text-xs font-mono"
+                  class="grow px-2 py-2 border rounded-lg text-xs font-mono"
                 />
               </div>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1 text-xs"
+              <label
+                for="navTextColorPicker"
+                class="block text-sm font-medium text-gray-700 mb-1 text-xs"
                 >Nav Textfarbe</label
               >
               <div class="flex gap-2">
                 <input
+                  id="navTextColorPicker"
                   v-model="settings.navTextColor"
                   type="color"
                   class="h-10 w-12 cursor-pointer border-none rounded"
                 />
                 <input
+                  id="navTextColor"
                   v-model="settings.navTextColor"
+                  @focus="kbStore.open('navTextColor', 'default', settings.navTextColor)"
+                  :class="{ 'input-keyboard-active': kbStore.activeInputId === 'navTextColor' }"
                   type="text"
                   class="grow px-2 py-2 border rounded-lg text-xs font-mono"
                 />
@@ -235,6 +270,7 @@
 
         <div class="flex justify-end gap-3">
           <button
+            type="button"
             @click="saveSettings"
             :disabled="isSaving || uploading"
             class="px-8 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition font-bold shadow-md disabled:opacity-50"
@@ -257,7 +293,7 @@
               v-if="settings.logoPath"
               :src="getFullLogoUrl(settings.logoPath)"
               class="h-6 mr-2"
-              alt="Logo"
+              alt="Logo Vorschau"
             />
             <div v-else class="w-6 h-6 bg-white/20 rounded-full mr-2"></div>
             <div class="text-xs font-bold truncate">{{ settings.vereinName }}</div>
@@ -270,13 +306,6 @@
             >
               Beispiel Button
             </div>
-            <div class="pt-2 flex gap-1">
-              <div
-                :style="{ backgroundColor: settings.secondaryColor }"
-                class="h-4 w-4 rounded-full"
-              ></div>
-              <div class="h-2 w-1/2 bg-gray-50 rounded mt-1"></div>
-            </div>
           </div>
         </div>
       </div>
@@ -288,8 +317,8 @@
 import { ref, onMounted } from 'vue'
 import apiClient from '@/api/client'
 import { useKeyboardStore } from '@/stores/keyboard'
-const kbStore = useKeyboardStore()
 
+const kbStore = useKeyboardStore()
 const isSaving = ref(false)
 const uploading = ref(false)
 
@@ -311,7 +340,7 @@ const fetchSettings = async () => {
     const { data } = await apiClient.get('/api/settings')
     settings.value = data
   } catch (error) {
-    console.error('Settings laden fehlgeschlagen')
+    console.error('Settings laden fehlgeschlagen:', error)
   }
 }
 
@@ -320,14 +349,16 @@ const downloadBarcodePdf = async () => {
     const response = await apiClient.get('/api/export/user-barcodes-pdf', {
       responseType: 'blob',
     })
-    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const url = globalThis.URL.createObjectURL(new Blob([response.data]))
     const link = document.createElement('a')
     link.href = url
     link.setAttribute('download', 'mitglieder_barcodes.pdf')
     document.body.appendChild(link)
     link.click()
     link.remove()
+    globalThis.URL.revokeObjectURL(url)
   } catch (error) {
+    console.error('Export Error:', error)
     alert('Export fehlgeschlagen.')
   }
 }
@@ -351,6 +382,7 @@ const handleLogoUpload = async (event: Event) => {
     })
     settings.value.logoPath = data.filename
   } catch (error) {
+    console.error('Upload Error:', error)
     alert('Upload fehlgeschlagen.')
   } finally {
     uploading.value = false
@@ -362,9 +394,9 @@ const saveSettings = async () => {
   isSaving.value = true
   try {
     await apiClient.put('/api/settings', settings.value)
-    // Seite neu laden, um die neuen CSS-Variablen/Branding überall anzuwenden
     globalThis.location.reload()
   } catch (error) {
+    console.error('Save Error:', error)
     alert('Fehler beim Speichern.')
   } finally {
     isSaving.value = false

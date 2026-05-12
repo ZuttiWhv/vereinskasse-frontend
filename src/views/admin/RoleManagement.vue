@@ -75,6 +75,7 @@
             <label class="block text-sm font-medium text-gray-700 mb-1">Name der Rolle</label>
             <input
               v-model="formData.name"
+              :class="{ 'input-keyboard-active': kbStore.activeInputId === 'role-name' }"
               id="role-name"
               @focus="kbStore.open('role-name', formData.name)"
               type="text"

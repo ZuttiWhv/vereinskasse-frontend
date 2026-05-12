@@ -49,13 +49,20 @@ const handleBarcodeLogin = async (barcode: string) => {
 
 const handleGlobalKeyDown = (event: KeyboardEvent) => {
   if (!isBarcodeEnabled.value) return
-  if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return
+  if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement)
+    return
   const currentTime = Date.now()
-  if (currentTime - lastKeyTime.value > 50) { barcodeBuffer.value = '' }
-  if (event.key === 'Enter') {
-    if (barcodeBuffer.value.length > 2) { handleBarcodeLogin(barcodeBuffer.value) }
+  if (currentTime - lastKeyTime.value > 50) {
     barcodeBuffer.value = ''
-  } else if (event.key.length === 1) { barcodeBuffer.value += event.key }
+  }
+  if (event.key === 'Enter') {
+    if (barcodeBuffer.value.length > 2) {
+      handleBarcodeLogin(barcodeBuffer.value)
+    }
+    barcodeBuffer.value = ''
+  } else if (event.key.length === 1) {
+    barcodeBuffer.value += event.key
+  }
   lastKeyTime.value = currentTime
 }
 
@@ -102,7 +109,9 @@ const selectUser = async (username: string) => {
   isLoggingIn.value = true
 
   try {
-    const { data: isPasswordlessPossible } = await apiClient.get(`/auth/passwordless/available/${username}`)
+    const { data: isPasswordlessPossible } = await apiClient.get(
+      `/auth/passwordless/available/${username}`,
+    )
     if (isPasswordlessPossible) {
       await handlePasswordlessLogin(username)
       return
@@ -159,14 +168,18 @@ async function submit() {
   try {
     await authStore.login(form)
     router.push('/')
-  } catch (e) { error.value = 'Anmeldung fehlgeschlagen' }
+  } catch (e) {
+    error.value = 'Anmeldung fehlgeschlagen'
+  }
 }
 
 onMounted(() => {
   checkQuickLogin()
   window.addEventListener('keydown', handleGlobalKeyDown)
 })
-onUnmounted(() => { window.removeEventListener('keydown', handleGlobalKeyDown) })
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleGlobalKeyDown)
+})
 </script>
 
 <template>
@@ -186,7 +199,9 @@ onUnmounted(() => { window.removeEventListener('keydown', handleGlobalKeyDown) }
 
       <div v-if="!isManualMode && hasQuickLogin && !isLoggingIn" class="quick-login-content">
         <div class="tree-nav">
-          <button v-if="navigationHistory.length > 0" class="back-link" @click="goBack">← Zurück</button>
+          <button v-if="navigationHistory.length > 0" class="back-link" @click="goBack">
+            ← Zurück
+          </button>
           <span class="current-node">{{ currentLevel?.name }}</span>
         </div>
 
@@ -218,11 +233,24 @@ onUnmounted(() => { window.removeEventListener('keydown', handleGlobalKeyDown) }
       <form v-else-if="!isLoggingIn" class="login-form" @submit.prevent="submit">
         <div class="input-group">
           <label>Nutzername</label>
-          <input id="username-field" v-model="form.username" required @focus="openKb('username-field', form.username)" />
+          <input
+            id="username-field"
+            v-model="form.username"
+            required
+            :class="{ 'input-keyboard-active': kbStore.activeInputId === 'username-field' }"
+            @focus="openKb('username-field', form.username)"
+          />
         </div>
         <div class="input-group">
           <label>Passwort</label>
-          <input id="password-field" v-model="form.password" required type="password" @focus="openKb('password-field', form.password)" />
+          <input
+            id="password-field"
+            v-model="form.password"
+            required
+            type="password"
+            @focus="openKb('password-field', form.password)"
+            :class="{ 'input-keyboard-active': kbStore.activeInputId === 'password-field' }"
+          />
         </div>
         <button :disabled="authStore.isLoading" class="btn-login" type="submit">Login</button>
       </form>
@@ -240,7 +268,9 @@ onUnmounted(() => { window.removeEventListener('keydown', handleGlobalKeyDown) }
         <h3>Hallo {{ selectedUsername }}</h3>
         <Numpad v-model="pinValue" :maxLength="6" @complete="handlePinComplete" />
         <div class="pin-footer-actions">
-          <button class="btn-abort" @click="switchToManual(selectedUsername)">Passwort nutzen</button>
+          <button class="btn-abort" @click="switchToManual(selectedUsername)">
+            Passwort nutzen
+          </button>
           <button class="btn-close" @click="showPinModal = false">Abbrechen</button>
         </div>
       </div>
@@ -249,7 +279,6 @@ onUnmounted(() => { window.removeEventListener('keydown', handleGlobalKeyDown) }
 </template>
 
 <style scoped>
-
 .user-item {
   background: #ebf8ff !important; /* Leicht bläulich für User */
   border-color: #bee3f8 !important;

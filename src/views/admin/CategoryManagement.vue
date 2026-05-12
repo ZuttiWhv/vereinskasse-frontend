@@ -68,10 +68,12 @@
             <input
               id="catname"
               @focus="kbStore.open('catname', form.name)"
+
               v-model="form.name"
               type="text"
               :class="[
                 'mt-1 block w-full border rounded-md shadow-sm p-2 focus:ring-blue-500',
+                { 'input-keyboard-active': kbStore.activeInputId === 'catname' },
                 apiErrors.name ? 'border-red-500' : 'border-gray-300',
               ]"
               required

@@ -22,6 +22,7 @@
             v-model="formData.newPassword"
             type="password"
             placeholder="Mindestens 8 Zeichen"
+            :class="{ 'input-keyboard-active': kbStore.activeInputId === 'password' }"
             class="w-full px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 transition"
           />
         </div>
@@ -136,6 +137,7 @@
               inputmode="numeric"
               maxlength="6"
               placeholder="****"
+              :class="{ 'input-keyboard-active': kbStore.activeInputId === 'pin' }"
               class="w-32 text-center text-2xl tracking-widest px-4 py-3 border-2 border-gray-100 rounded-2xl outline-none focus:border-emerald-500 transition"
             />
             <span
