@@ -41,6 +41,7 @@
           @keyup.enter="saveUnit"
           id="unit-name"
           @focus="kbStore.open('unit-name', newUnitName)"
+          :class="{ 'input-keyboard-active': kbStore.activeInputId === 'unit-name' }"
           type="text"
           class="w-full border-2 border-gray-100 rounded-xl p-3 outline-none focus:border-emerald-500 transition mb-6"
           placeholder="Name, z.B. Jugendfußball"

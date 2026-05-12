@@ -39,6 +39,7 @@
         <input
           id="device-name"
           @focus="kbStore.open('device-name', newDeviceName)"
+          :class="{ 'input-keyboard-active': kbStore.activeInputId === 'device-name' }"
           v-model="newDeviceName"
           type="text"
           placeholder="z.B. Kasse-Foyer oder Raspberry-Pi-1"

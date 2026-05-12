@@ -29,26 +29,146 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, watch, nextTick } from 'vue'
+import { onMounted, watch, nextTick, onUnmounted } from 'vue'
 import Keyboard from 'simple-keyboard'
 import 'simple-keyboard/build/css/index.css'
 import { useKeyboardStore } from '@/stores/keyboard'
 
 const kbStore = useKeyboardStore()
 let keyboard: any = null
+let isUpdatingFromOSK = false
+
+/**
+ * Hilfsfunktion: Holt das aktuell aktive HTML-Input Element aus dem DOM
+ */
+const getActiveInputElement = (): HTMLInputElement | HTMLTextAreaElement | null => {
+  if (!kbStore.activeInputId) return null
+  return document.getElementById(kbStore.activeInputId) as HTMLInputElement
+}
+
+/**
+ * Synchronisiert den Wert in die Tastatur
+ */
+const syncToKeyboard = (value: string) => {
+  if (keyboard && keyboard.getInput() !== value) {
+    keyboard.setInput(value)
+  }
+}
+
+/**
+ * Verarbeitet die Änderung von der On-Screen-Tastatur und hält den Cursor stabil
+ */
+const handleOSKChange = async (input: string) => {
+  const inputEl = getActiveInputElement()
+  if (!inputEl) {
+    kbStore.updateValue(input)
+    return
+  }
+
+  // Cursor-Position VOR der Änderung merken (aus dem internen Caret-Status der Library)
+  const caretPos = keyboard.caretPosition ?? inputEl.selectionStart
+
+  isUpdatingFromOSK = true
+  kbStore.updateValue(input)
+
+  await nextTick()
+
+  // Cursor im echten HTML-Input wieder an die richtige Stelle setzen
+  if (inputEl) {
+    inputEl.focus()
+    inputEl.setSelectionRange(caretPos, caretPos)
+  }
+
+  isUpdatingFromOSK = false
+}
+
+/**
+ * FIX: Schließen beim Tabben oder Fokus-Wechsel
+ */
+const handleFocusChange = (event: FocusEvent) => {
+  const target = event.target as HTMLElement
+  if (!target) return
+
+  const isWithinKeyboard = target.closest('.keyboard-container')
+  const isInput = ['INPUT', 'TEXTAREA'].includes(target.tagName)
+  const isSameInput = target.id === kbStore.activeInputId
+
+  // Wenn wir die Tastatur verlassen und das neue Ziel kein Input ist
+  // ODER ein ganz anderes Input (das Öffnen eines neuen Feldes wird vom Feld selbst getriggert)
+  if (kbStore.isOpen && !isWithinKeyboard && (!isInput || !isSameInput)) {
+    // Kurzer Delay, damit Klicks auf "Fertig" oder Feldwechsel sauber verarbeitet werden
+    setTimeout(() => {
+      // Prüfen, ob der Fokus immer noch außerhalb ist
+      const currentFocus = document.activeElement
+      if (
+        currentFocus &&
+        !currentFocus.closest('.keyboard-container') &&
+        !['INPUT', 'TEXTAREA'].includes(currentFocus.tagName)
+      ) {
+        kbStore.close()
+      }
+    }, 100)
+  }
+}
+
+/**
+ * Hardware-Eingabe: Synchronisiert Cursor und Wert vom DOM zur Tastatur
+ */
+const handlePhysicalInput = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  if (target && target.id === kbStore.activeInputId) {
+    syncToKeyboard(target.value)
+    if (keyboard) {
+      keyboard.setCaretPosition(target.selectionStart)
+    }
+  }
+}
+
+const handlePointerUp = (event: PointerEvent) => {
+  const target = event.target as HTMLInputElement
+  if (target.id === kbStore.activeInputId && keyboard) {
+    keyboard.setCaretPosition(target.selectionStart)
+  }
+}
+
+const handleOutsideClick = (event: MouseEvent) => {
+  const target = event.target as HTMLElement
+  if (
+    kbStore.isOpen &&
+    !target.closest('.keyboard-container') &&
+    !['INPUT', 'TEXTAREA'].includes(target.tagName)
+  ) {
+    kbStore.close()
+  }
+}
 
 watch(
   () => kbStore.keyboardType,
   (newType) => {
-    if (keyboard) {
-      keyboard.setOptions({
-        layoutName: newType,
-      })
-    }
+    if (keyboard) keyboard.setOptions({ layoutName: newType })
+  },
+)
+
+watch(
+  () => kbStore.activeInputId,
+  () => {
+    syncToKeyboard(kbStore.inputValue || '')
+  },
+)
+
+watch(
+  () => kbStore.inputValue,
+  (newVal) => {
+    if (!isUpdatingFromOSK) syncToKeyboard(newVal || '')
   },
 )
 
 onMounted(async () => {
+  globalThis.addEventListener('mousedown', handleOutsideClick)
+  globalThis.addEventListener('focusin', handleFocusChange) // RE-ADDED: Fix für Tabbing
+  globalThis.addEventListener('input', handlePhysicalInput)
+  globalThis.addEventListener('pointerup', handlePointerUp)
+
   await nextTick()
 
   let KeyboardClass: any = Keyboard
@@ -62,20 +182,13 @@ onMounted(async () => {
   if (typeof KeyboardClass === 'function') {
     try {
       keyboard = new KeyboardClass('.simple-keyboard', {
-        onChange: (input: string) => {
-          kbStore.updateValue(input)
-        },
+        onChange: (input: string) => handleOSKChange(input),
         onKeyPress: (button: string) => {
-          if (button === '{shift}' || button === '{lock}') {
-            handleShift()
-          }
-          if (button === '{ent}') {
-            kbStore.close()
-          }
+          if (button === '{shift}' || button === '{lock}') handleShift()
+          if (button === '{ent}') kbStore.close()
         },
-
         preventMouseDownDefault: true,
-
+        disableCaretPositioning: false,
         layout: {
           default: [
             '1 2 3 4 5 6 7 8 9 0 ß {backspace}',
@@ -91,48 +204,29 @@ onMounted(async () => {
             '{shift} Y X C V B N M ; :',
             '{numbers} {space} {ent}',
           ],
-          numeric: [
-            '1 2 3',
-            '4 5 6',
-            '7 8 9',
-            '{backspace} 0 .', // Punkt statt Komma für HTML5 number inputs
-            '00 {ent}', // Doppel-Null für Preise
-          ],
+          numeric: ['1 2 3', '4 5 6', '7 8 9', '{backspace} 0 .', '00 {ent}'],
         },
-
         display: {
-          '{ent}': 'Enter ↵',
+          '{ent}': 'Fertig ✔',
           '{backspace}': '⌫',
           '{numbers}': '123',
           '{shift}': '⇧',
           '{space}': 'Leertaste',
         },
       })
+      syncToKeyboard(kbStore.inputValue || '')
     } catch (err) {
       console.error('Keyboard Init fehlgeschlagen:', err)
     }
   }
 })
 
-// Synchronisiert die Tastatur, wenn ein neues Feld angeklickt wird
-watch(
-  () => kbStore.activeInputId,
-  (newId) => {
-    if (newId && keyboard) {
-      keyboard.setInput(kbStore.inputValue)
-    }
-  },
-)
-
-// Synchronisiert manuelle Änderungen (z.B. wenn Vue das Feld leert)
-watch(
-  () => kbStore.inputValue,
-  (newVal) => {
-    if (keyboard && newVal !== keyboard.getInput()) {
-      keyboard.setInput(newVal)
-    }
-  },
-)
+onUnmounted(() => {
+  globalThis.removeEventListener('mousedown', handleOutsideClick)
+  globalThis.removeEventListener('focusin', handleFocusChange)
+  globalThis.removeEventListener('input', handlePhysicalInput)
+  globalThis.removeEventListener('pointerup', handlePointerUp)
+})
 
 const handleShift = () => {
   const currentLayout = keyboard.options.layoutName
@@ -152,15 +246,12 @@ const handleShift = () => {
   background: #f3f4f6;
   min-height: 280px;
   user-select: none;
-  transition: all 0.3s ease;
 }
-
 :deep(.simple-keyboard) {
   background-color: #f3f4f6 !important;
   border-radius: 0 !important;
   padding: 10px !important;
 }
-
 :deep(.hg-button) {
   height: 52px !important;
   background: white !important;
@@ -170,20 +261,12 @@ const handleShift = () => {
   font-weight: 600 !important;
   color: #1e293b !important;
 }
-
-:deep(.hg-button:active) {
-  background: #e2e8f0 !important;
-  transform: translateY(2px);
-  border-bottom-width: 1px !important;
+.is-numeric {
+  max-width: 400px;
+  left: 50% !important;
+  transform: translateX(-50%);
+  border-radius: 20px 20px 0 0;
 }
-
-:deep(.hg-button-shift),
-:deep(.hg-button-backspace),
-:deep(.hg-button-numbers),
-:deep(.hg-button-ent) {
-  background: #e2e8f0 !important;
-}
-
 .slide-up-enter-active,
 .slide-up-leave-active {
   transition: transform 0.3s ease-out;
@@ -191,17 +274,5 @@ const handleShift = () => {
 .slide-up-enter-from,
 .slide-up-leave-to {
   transform: translateY(100%);
-}
-
-.is-numeric {
-  max-width: 400px;
-  left: 50% !important;
-  transform: translateX(-50%);
-  border-radius: 20px 20px 0 0;
-}
-
-/* Numpad Tasten quadratischer machen */
-.numeric-mode :deep(.hg-button) {
-  height: 65px !important;
 }
 </style>

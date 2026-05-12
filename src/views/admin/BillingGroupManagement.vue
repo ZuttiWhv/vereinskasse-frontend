@@ -121,6 +121,7 @@
               class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
               id="inputname"
               @focus="kbStore.open('inputname', formData.name)"
+              :class="{ 'input-keyboard-active': kbStore.activeInputId === 'inputname' }"
             />
           </div>
 
@@ -129,6 +130,7 @@
             <textarea
               id="inputdescription"
               @focus="kbStore.open('inputdescription', formData.description)"
+              :class="{ 'input-keyboard-active': kbStore.activeInputId === 'inputdescription' }"
               v-model="formData.description"
               rows="2"
               class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
@@ -158,6 +160,7 @@
                 <input
                   id="inputlimit"
                   @focus="kbStore.open('inputlimit', String(displayLimit), 'numeric')"
+                  :class="{ 'input-keyboard-active': kbStore.activeInputId === 'inputLimit' }"
                   v-model="displayLimit"
                   type="text"
                   inputmode="decimal"

@@ -118,10 +118,11 @@
               >
               <input
                 id="product-name"
+                :class="{ 'input-keyboard-active': kbStore.activeInputId === 'product-name' }"
                 @focus="kbStore.open('product-name', formData.name)"
                 v-model="formData.name"
                 type="text"
-                class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                class="w-full px-4 py-2 border rounded-lg outline-none"
                 placeholder="z.B. pils_033"
               />
             </div>
@@ -131,6 +132,7 @@
                 v-model="formData.anzeigename"
                 id="product-showname"
                 @focus="kbStore.open('product-showname', formData.anzeigename)"
+                :class="{ 'input-keyboard-active': kbStore.activeInputId === 'product-showname' }"
                 type="text"
                 class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="z.B. Pils 0,33l"
@@ -145,6 +147,7 @@
                 v-model="displayPrice"
                 id="product-price"
                 @focus="kbStore.open('product-price', String(displayPrice), 'numeric')"
+                :class="{ 'input-keyboard-active': kbStore.activeInputId === 'product-price' }"
                 type="text"
                 inputmode="decimal"
                 class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
@@ -154,7 +157,7 @@
               <label class="block text-sm font-medium text-gray-700 mb-1">Kategorie</label>
               <select
                 v-model="formData.categoryId"
-                class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2  bg-white"
               >
                 <option :value="null" disabled>Bitte wählen...</option>
                 <option v-for="cat in categories" :key="cat.id" :value="cat.id">
@@ -171,6 +174,7 @@
                 id="product-barcode"
                 v-model="formData.barcode"
                 @focus="kbStore.open('product-barcode', formData.barcode || '', 'numeric')"
+                :class="{ 'input-keyboard-active': kbStore.activeInputId === 'product-barcode' }"
                 type="text"
                 class="flex-1 px-4 py-2 border border-blue-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white font-mono"
                 placeholder="Barcode scannen oder eingeben..."

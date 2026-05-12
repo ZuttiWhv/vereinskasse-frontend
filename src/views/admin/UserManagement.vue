@@ -9,16 +9,25 @@
       <div class="flex flex-col sm:flex-row w-full md:w-auto gap-3">
         <div class="relative flex-grow">
           <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"> 🔍 </span>
+          <label for="searchBar" class="sr-only">Benutzer suchen</label>
           <input
+            id="searchBar"
             v-model="searchQuery"
             type="text"
             placeholder="Benutzer suchen..."
-            class="pl-10 pr-4 py-2 border rounded-lg w-full outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            @focus="kbStore.open('searchBar', searchQuery)"
+            :class="[
+              'pl-10 pr-4 py-2 border rounded-lg w-full outline-none transition-all bg-white',
+              kbStore.activeInputId === 'searchBar'
+                ? 'input-keyboard-active'
+                : 'focus:ring-2 focus:ring-blue-500',
+            ]"
           />
         </div>
 
         <button
           v-if="authStore.hasAuthority('READ_USER')"
+          type="button"
           @click="downloadBarcodePdf"
           class="flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition shadow-sm font-semibold whitespace-nowrap"
           title="PDF Liste mit Barcodes exportieren"
@@ -28,6 +37,7 @@
 
         <button
           v-if="allowBarcodeLogin && authStore.hasAuthority('WRITE_USER')"
+          type="button"
           @click="generateAllBarcodes"
           :disabled="isGenerating"
           class="bg-purple-100 hover:bg-purple-200 text-purple-700 border border-purple-200 px-4 py-2 rounded-lg transition shadow-sm font-semibold whitespace-nowrap disabled:opacity-50"
@@ -37,6 +47,7 @@
 
         <button
           v-if="authStore.hasAuthority('WRITE_USER')"
+          type="button"
           @click="openModal()"
           class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition shadow-md font-semibold whitespace-nowrap"
         >
@@ -120,14 +131,15 @@
               <td class="px-6 py-4 text-right space-x-3">
                 <button
                   v-if="allowBarcodeLogin && authStore.hasAuthority('WRITE_USER')"
+                  type="button"
                   @click="generateBarcodeForUser(user)"
                   class="text-purple-600 hover:text-purple-800 font-medium text-sm"
-                  title="Neuen Barcode für diesen Benutzer generieren"
                 >
                   Barcode
                 </button>
                 <button
                   v-if="authStore.hasAuthority('WRITE_USER')"
+                  type="button"
                   @click="openDepositModal(user)"
                   class="text-emerald-600 hover:text-emerald-800 font-medium text-sm"
                 >
@@ -135,6 +147,7 @@
                 </button>
                 <button
                   v-if="authStore.hasAuthority('WRITE_USER')"
+                  type="button"
                   @click="openModal(user)"
                   class="text-blue-600 hover:text-blue-800 font-medium text-sm"
                 >
@@ -142,6 +155,7 @@
                 </button>
                 <button
                   v-if="authStore.hasAuthority('DELETE_USER')"
+                  type="button"
                   @click="deleteUser(user)"
                   class="text-red-400 hover:text-red-600 font-medium text-sm"
                 >
@@ -165,23 +179,38 @@
           <h2 class="text-xl font-bold text-gray-800">
             {{ isEditing ? 'Benutzer bearbeiten' : 'Neuen Benutzer anlegen' }}
           </h2>
-          <button @click="showModal = false" class="text-gray-400 hover:text-gray-600 text-2xl">
+          <button
+            type="button"
+            @click="showModal = false"
+            class="text-gray-400 hover:text-gray-600 text-2xl"
+          >
             &times;
           </button>
         </div>
         <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Benutzername</label>
+            <label for="user-name" class="block text-sm font-medium text-gray-700 mb-1"
+              >Benutzername</label
+            >
             <input
-              @focus="kbStore.open('user-name', formData.username)"
+              id="user-name"
               v-model="formData.username"
               type="text"
-              class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+              @focus="kbStore.open('user-name', formData.username)"
+              :class="[
+                'w-full px-4 py-2 border rounded-lg outline-none transition-all',
+                kbStore.activeInputId === 'user-name'
+                  ? 'input-keyboard-active'
+                  : 'focus:ring-2 focus:ring-blue-500',
+              ]"
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Abteilung / OU</label>
+            <label for="orgUnitId" class="block text-sm font-medium text-gray-700 mb-1"
+              >Abteilung / OU</label
+            >
             <select
+              id="orgUnitId"
               v-model="formData.orgUnitId"
               class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
             >
@@ -192,8 +221,11 @@
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Abrechnungsgruppe</label>
+            <label for="billingGroupId" class="block text-sm font-medium text-gray-700 mb-1"
+              >Abrechnungsgruppe</label
+            >
             <select
+              id="billingGroupId"
               v-model="formData.billingGroupId"
               class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white"
             >
@@ -204,18 +236,24 @@
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">{{
+            <label for="user-password" class="block text-sm font-medium text-gray-700 mb-1">{{
               isEditing ? 'Neues Passwort (optional)' : 'Passwort'
             }}</label>
             <input
+              id="user-password"
+              v-model="formData.password"
               type="password"
               @focus="kbStore.open('user-password', formData.password)"
-              v-model="formData.password"
-              class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+              :class="[
+                'w-full px-4 py-2 border rounded-lg outline-none transition-all',
+                kbStore.activeInputId === 'user-password'
+                  ? 'input-keyboard-active'
+                  : 'focus:ring-2 focus:ring-blue-500',
+              ]"
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Rollen zuweisen</label>
+            <span class="block text-sm font-medium text-gray-700 mb-2">Rollen zuweisen</span>
             <div
               class="grid grid-cols-1 gap-2 p-3 border rounded-lg bg-gray-50 max-h-48 overflow-y-auto"
             >
@@ -242,12 +280,14 @@
         </div>
         <div class="p-6 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
           <button
+            type="button"
             @click="showModal = false"
             class="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition font-medium"
           >
             Abbrechen
           </button>
           <button
+            type="button"
             @click="saveUser"
             :disabled="!isFormValid"
             class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-bold disabled:opacity-50"
@@ -270,17 +310,23 @@
           <p class="text-sm text-gray-500">Für {{ selectedUserForDeposit?.username }}</p>
         </div>
         <div class="p-6">
-          <label class="block text-sm font-medium text-gray-700 mb-2 text-center"
+          <label for="depAmount" class="block text-sm font-medium text-gray-700 mb-2 text-center"
             >Betrag in Euro</label
           >
           <div class="relative">
             <input
-              @focus="kbStore.open('depAmount', String(depositAmount))"
+              id="depAmount"
               v-model="depositAmount"
               type="number"
               step="0.01"
               min="0.01"
-              class="w-full pl-4 pr-10 py-4 border-2 border-emerald-100 rounded-xl text-3xl font-bold text-center outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10"
+              @focus="kbStore.open('depAmount', String(depositAmount))"
+              :class="[
+                'w-full pl-4 pr-10 py-4 border-2 rounded-xl text-3xl font-bold text-center outline-none transition-all',
+                kbStore.activeInputId === 'depAmount'
+                  ? 'input-keyboard-active'
+                  : 'border-emerald-100 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10',
+              ]"
               placeholder="0,00"
             />
             <span class="absolute right-4 top-1/2 -translate-y-1/2 text-xl font-bold text-gray-400"
@@ -290,6 +336,7 @@
         </div>
         <div class="p-6 border-t border-gray-100 bg-gray-50 flex flex-col gap-2">
           <button
+            type="button"
             @click="handleDeposit"
             :disabled="depositAmount <= 0"
             class="w-full py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition font-bold disabled:opacity-50"
@@ -297,6 +344,7 @@
             Einzahlung bestätigen
           </button>
           <button
+            type="button"
             @click="showDepositModal = false"
             class="w-full py-2 text-gray-500 hover:text-gray-700 font-medium transition"
           >
@@ -329,7 +377,6 @@ const showDepositModal = ref(false)
 const depositAmount = ref<number>(0)
 const selectedUserForDeposit = ref<any>(null)
 
-// Barcode Feature States
 const allowBarcodeLogin = ref(false)
 const isGenerating = ref(false)
 
@@ -344,10 +391,9 @@ const formData = ref({
 
 // --- COMPUTED ---
 const filteredUsers = computed(() => {
-  const filtered = users.value.filter((user) =>
-    user.username.toLowerCase().includes(searchQuery.value.toLowerCase()),
-  )
-  return filtered.sort((a, b) => a.username.localeCompare(b.username, 'de'))
+  return users.value
+    .filter((u) => u.username.toLowerCase().includes(searchQuery.value.toLowerCase()))
+    .sort((a, b) => a.username.localeCompare(b.username, 'de'))
 })
 
 const isFormValid = computed(() => {
@@ -358,13 +404,13 @@ const isFormValid = computed(() => {
   return isEditing.value ? basic : basic && formData.value.password.length >= 4
 })
 
-// --- AKTIONEN ---
+// --- ACTIONS ---
 const fetchSettings = async () => {
   try {
     const { data } = await apiClient.get('/api/settings')
     allowBarcodeLogin.value = data.allowBarcodeLogin || false
   } catch (error) {
-    console.error('Fehler Settings:', error)
+    console.error('Settings-Error:', error)
   }
 }
 
@@ -373,7 +419,7 @@ const fetchUsers = async () => {
     const { data } = await apiClient.get('/api/users')
     users.value = Object.values(data)
   } catch (error) {
-    console.error('Fehler Users:', error)
+    console.error('Users-Error:', error)
   }
 }
 
@@ -382,7 +428,7 @@ const fetchRoles = async () => {
     const { data } = await apiClient.get('/api/roles')
     roles.value = Object.values(data).sort((a: any, b: any) => a.name.localeCompare(b.name))
   } catch (error) {
-    console.error('Fehler Rollen:', error)
+    console.error('Roles-Error:', error)
   }
 }
 
@@ -391,7 +437,7 @@ const fetchBillingGroups = async () => {
     const { data } = await apiClient.get('/api/billing-groups')
     billingGroups.value = data
   } catch (error) {
-    console.error('Fehler Billing:', error)
+    console.error('Billing-Error:', error)
   }
 }
 
@@ -400,46 +446,47 @@ const fetchOrgUnits = async () => {
     const { data } = await apiClient.get('/api/org-units')
     orgUnits.value = data.sort((a: any, b: any) => a.name.localeCompare(b.name))
   } catch (error) {
-    console.error('Fehler OUs:', error)
+    console.error('OU-Error:', error)
   }
 }
 
-// PDF EXPORT
 const downloadBarcodePdf = async () => {
   try {
     const response = await apiClient.get('/api/export/user-barcodes-pdf', { responseType: 'blob' })
-    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const url = globalThis.URL.createObjectURL(new Blob([response.data]))
     const link = document.createElement('a')
     link.href = url
     link.setAttribute('download', 'mitglieder_barcodes.pdf')
     document.body.appendChild(link)
     link.click()
     link.remove()
-    window.URL.revokeObjectURL(url)
+    globalThis.URL.revokeObjectURL(url)
   } catch (error) {
-    alert('Export fehlgeschlagen. Haben Sie Admin-Rechte?')
+    console.error('PDF-Error:', error)
+    alert('Export fehlgeschlagen.')
   }
 }
 
-// BARCODE GENERIERUNG
 const generateBarcodeForUser = async (user: any) => {
   if (confirm(`Neuen Barcode für "${user.username}" generieren?`)) {
     try {
       await apiClient.post(`/api/users/${user.id}/generate-barcode`)
       await fetchUsers()
     } catch (error: any) {
+      console.error('Barcode-Error:', error)
       alert(error.response?.data?.message || 'Fehler.')
     }
   }
 }
 
 const generateAllBarcodes = async () => {
-  if (confirm(`Wirklich für ALLE Benutzer neue Barcodes erstellen?`)) {
+  if (confirm('Wirklich für ALLE Benutzer neue Barcodes erstellen?')) {
     isGenerating.value = true
     try {
-      await apiClient.post(`/api/users/generate-barcodes`)
+      await apiClient.post('/api/users/generate-barcodes')
       await fetchUsers()
-    } catch (error: any) {
+    } catch (error) {
+      console.error('Mass-Gen-Error:', error)
       alert('Fehler.')
     } finally {
       isGenerating.value = false
@@ -461,7 +508,8 @@ const handleDeposit = async () => {
     await fetchUsers()
     if (selectedUserForDeposit.value.id === authStore.user?.id) await authStore.fetchProfile()
     showDepositModal.value = false
-  } catch (error: any) {
+  } catch (error) {
+    console.error('Deposit-Error:', error)
     alert('Fehler.')
   }
 }
@@ -509,7 +557,8 @@ const saveUser = async () => {
     }
     await fetchUsers()
     showModal.value = false
-  } catch (error: any) {
+  } catch (error) {
+    console.error('Save-Error:', error)
     alert('Fehler beim Speichern.')
   }
 }
@@ -520,7 +569,8 @@ const deleteUser = async (user: any) => {
       await apiClient.delete(`/api/users/${user.id}`)
       await fetchUsers()
     } catch (error) {
-      alert('Fehler beim Löschen.')
+      console.error('Delete-Error:', error)
+      alert('Fehler.')
     }
   }
 }

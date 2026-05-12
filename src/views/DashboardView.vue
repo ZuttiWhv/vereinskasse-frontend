@@ -6,9 +6,11 @@ import { ShopService } from '@/api/shop.service'
 import apiClient from '@/api/client'
 import type { Category, Product as BaseProduct, PrepaidVoucherDTO } from '@/types'
 import { mediaApi } from '@/api/mediaApi'
+import { useKeyboardStore } from '@/stores/keyboard'
 
 const authStore = useAuthStore()
 const router = useRouter()
+const kbStore = useKeyboardStore()
 
 interface Product extends BaseProduct {
   active: boolean
@@ -311,7 +313,15 @@ const formatPrice = (cents: number) => {
       <div class="modal-card animate-pop">
         <h3>Runde spendieren</h3>
         <p>Du gibst {{ quantity }}x {{ selectedProduct?.name }} aus.</p>
-        <input v-model="issueReason" placeholder="Grund (optional)" class="modal-input" autofocus />
+        <input
+          v-model="issueReason"
+          placeholder="Grund (optional)"
+          class="modal-input"
+          autofocus
+          id="reason"
+          @focus="kbStore.open('reason', issueReason)"
+          :class="{ 'input-keyboard-active': kbStore.activeInputId === 'reason' }"
+        />
         <div class="modal-actions">
           <button class="btn-confirm" @click="handleIssueVoucher">Kostenpflichtig ausgeben</button>
           <button class="btn-cancel-action" @click="showIssueModal = false">Abbrechen</button>

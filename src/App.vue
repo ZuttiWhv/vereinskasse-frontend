@@ -282,6 +282,17 @@ onMounted(fetchSettings)
   --primary-color: #2563eb;
   --secondary-color: #1e40af;
   --nav-text-color: #ffffff;
+  /* Automatisch abgeleitete Fokus-Farben */
+  --focus-ring-color: color-mix(in srgb, var(--primary-color), transparent 80%);
+  --focus-bg-color: color-mix(in srgb, var(--primary-color), white 95%);
+}
+
+.input-keyboard-active {
+  outline: none !important;
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 0 0 3px var(--focus-ring-color) !important;
+  background-color: var(--focus-bg-color) !important;
+  transition: all 0.2s ease-in-out;
 }
 
 /* NAVBAR BASIS */
@@ -372,5 +383,25 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+/* 1. Globaler Reset für den Browser-Standard (Blau) */
+*:focus {
+  outline: none !important;
+}
+
+/* 2. Zuweisung der Systemfarbe an alle Formular-Elemente */
+select:focus,
+input:focus,
+textarea:focus {
+  border-color: var(--primary-color) !important;
+  /* Wir nutzen hier die Variable, die du oben mit color-mix definiert hast */
+  box-shadow: 0 0 0 3px var(--focus-ring-color) !important;
+}
+
+/* 3. Speziell für das Kategorien-Dropdown, falls es eine ID hat */
+#category:focus,
+.category-select:focus {
+  border-color: var(--primary-color) !important;
 }
 </style>
