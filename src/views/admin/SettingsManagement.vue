@@ -188,7 +188,7 @@
               id="nameInput"
               v-model="settings.vereinName"
               :class="{ 'input-keyboard-active': kbStore.activeInputId === 'nameInput' }"
-              @focus="kbStore.open('nameInput', 'default', settings.vereinName)"
+              @focus="kbStore.open('nameInput', settings.vereinName, 'default')"
               type="text"
               class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
             />
@@ -197,7 +197,7 @@
             <div>
               <label
                 for="primaryColorPicker"
-                class="block text-sm font-medium text-gray-700 mb-1 text-xs"
+                class="block text-sm font-medium text-gray-700 mb-1"
                 >Primärfarbe</label
               >
               <div class="flex gap-2">
@@ -210,7 +210,7 @@
                 <input
                   id="primaryColortxt"
                   v-model="settings.primaryColor"
-                  @focus="kbStore.open('primaryColortxt', 'default', settings.primaryColor)"
+                  @focus="kbStore.open('primaryColortxt', settings.primaryColor, 'default')"
                   :class="{ 'input-keyboard-active': kbStore.activeInputId === 'primaryColortxt' }"
                   type="text"
                   class="grow px-2 py-2 border rounded-lg text-xs font-mono"
@@ -220,7 +220,7 @@
             <div>
               <label
                 for="secondaryColorPicker"
-                class="block text-sm font-medium text-gray-700 mb-1 text-xs"
+                class="block text-sm font-medium text-gray-700 mb-1"
                 >Sekundärfarbe</label
               >
               <div class="flex gap-2">
@@ -233,7 +233,7 @@
                 <input
                   id="secondaryColortxt"
                   v-model="settings.secondaryColor"
-                  @focus="kbStore.open('secondaryColortxt', 'default', settings.secondaryColor)"
+                  @focus="kbStore.open('secondaryColortxt', settings.secondaryColor)"
                   :class="{
                     'input-keyboard-active': kbStore.activeInputId === 'secondaryColortxt',
                   }"
@@ -245,7 +245,7 @@
             <div>
               <label
                 for="navTextColorPicker"
-                class="block text-sm font-medium text-gray-700 mb-1 text-xs"
+                class="block text-sm font-medium text-gray-700 mb-1"
                 >Nav Textfarbe</label
               >
               <div class="flex gap-2">
@@ -258,7 +258,7 @@
                 <input
                   id="navTextColor"
                   v-model="settings.navTextColor"
-                  @focus="kbStore.open('navTextColor', 'default', settings.navTextColor)"
+                  @focus="kbStore.open('navTextColor', settings.navTextColor)"
                   :class="{ 'input-keyboard-active': kbStore.activeInputId === 'navTextColor' }"
                   type="text"
                   class="grow px-2 py-2 border rounded-lg text-xs font-mono"
