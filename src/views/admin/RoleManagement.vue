@@ -88,7 +88,7 @@
             <input
               v-model="formData.name"
               id="role-name"
-              @focus="kbStore.open('role-name', 'default', formData.name)"
+              @focus="kbStore.open('role-name', formData.name)"
               type="text"
               placeholder="z.B. ROLE_ADMIN"
               class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition"
