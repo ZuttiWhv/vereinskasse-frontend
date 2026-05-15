@@ -197,7 +197,7 @@
   <footer class="bg-white py-6 border-t border-gray-200 mt-auto">
     <div class="max-w-7xl mx-auto px-4 text-center">
       <p class="text-gray-500 text-xs tracking-wide">
-        &copy; 2026 {{ settings.vereinName }} | <span class="font-semibold">Vereinskasse v0.3</span>
+        &copy; 2026 {{ settings.vereinName }} | <span class="font-semibold">Vereinskasse v0.5</span>
       </p>
     </div>
   </footer>
