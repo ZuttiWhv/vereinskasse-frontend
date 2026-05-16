@@ -106,7 +106,7 @@ const kbStore = useKeyboardStore()
 
 // Typfehler-Prävention für den Store-Aufruf
 const openKb = (id: string, currentVal: string) => {
-  kbStore.open(id, 'default', currentVal)
+  kbStore.open(id, currentVal)
 }
 
 const authStore = useAuthStore()
