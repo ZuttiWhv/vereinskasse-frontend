@@ -1,3 +1,99 @@
+<template>
+  <div class="login-container">
+    <div v-if="isBarcodeEnabled" class="barcode-status">
+      <span class="status-dot"></span> Barcode-Scanner aktiv
+    </div>
+
+    <div class="login-card" :class="{ 'quick-login-wide': !isManualMode && hasQuickLogin }">
+      <h1>Willkommen</h1>
+      <p class="subtitle">{{ isManualMode ? 'Bitte melde dich an' : 'Schnellauswahl nutzen' }}</p>
+
+      <div v-if="isLoggingIn" class="auto-login-overlay">
+        <div class="spinner"></div>
+        <p>Prüfe Identität...</p>
+      </div>
+
+      <div v-if="!isManualMode && hasQuickLogin && !isLoggingIn" class="quick-login-content">
+        <div class="tree-nav">
+          <button v-if="navigationHistory.length > 0" class="back-link" @click="goBack">
+            ← Zurück
+          </button>
+          <span class="current-node">{{ currentLevel?.name }}</span>
+        </div>
+
+        <div class="selection-scroll-area">
+          <div class="selection-grid">
+            <button
+              v-for="item in currentLevel?.subUnits"
+              :key="item.id || item.name"
+              class="grid-item"
+              :class="{ 'user-item': item.isUser }"
+              @click="handleItemClick(item)"
+            >
+              <span class="icon">{{ item.isUser ? '👤' : '📁' }}</span>
+              {{ item.name }}
+            </button>
+
+            <button
+              v-for="user in currentLevel?.usernames"
+              :key="user"
+              class="grid-item user-item"
+              @click="selectUser(user)"
+            >
+              <span class="icon">👤</span> {{ user }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <form v-else-if="!isLoggingIn" class="login-form" @submit.prevent="submit">
+        <div class="input-group">
+          <label for="username-field">Nutzername</label>
+          <input
+            id="username-field"
+            v-model="form.username"
+            required
+            :class="{ 'input-keyboard-active': kbStore.activeInputId === 'username-field' }"
+            @focus="openKb('username-field', form.username)"
+          />
+        </div>
+        <div class="input-group">
+          <label for="password-field">Passwort</label>
+          <input
+            id="password-field"
+            v-model="form.password"
+            required
+            type="password"
+            @focus="openKb('password-field', form.password)"
+            :class="{ 'input-keyboard-active': kbStore.activeInputId === 'password-field' }"
+          />
+        </div>
+        <button :disabled="authStore.isLoading" class="btn-login" type="submit">Login</button>
+      </form>
+
+      <p v-if="error" class="error-msg">{{ error }}</p>
+      <div v-if="hasQuickLogin && !isLoggingIn" class="mode-switch">
+        <button class="btn-switch" @click="isManualMode = !isManualMode">
+          {{ isManualMode ? 'Zur Schnellauswahl' : 'Manuelle Anmeldung' }}
+        </button>
+      </div>
+    </div>
+
+    <div v-if="showPinModal" class="pin-overlay">
+      <div class="pin-modal animate-pop">
+        <h3>Hallo {{ selectedUsername }}</h3>
+        <Numpad v-model="pinValue" :maxLength="6" @complete="handlePinComplete" />
+        <div class="pin-footer-actions">
+          <button class="btn-abort" @click="switchToManual(selectedUsername)">
+            Passwort nutzen
+          </button>
+          <button class="btn-close" @click="showPinModal = false">Abbrechen</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
 <script lang="ts" setup>
 import { onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
@@ -8,8 +104,9 @@ import { useKeyboardStore } from '@/stores/keyboard'
 
 const kbStore = useKeyboardStore()
 
+// Typfehler-Prävention für den Store-Aufruf
 const openKb = (id: string, currentVal: string) => {
-  kbStore.open(id, currentVal)
+  kbStore.open(id, 'default', currentVal)
 }
 
 const authStore = useAuthStore()
@@ -21,13 +118,11 @@ const hasQuickLogin = ref(false)
 const currentLevel = ref<any>(null)
 const navigationHistory = ref<any[]>([])
 
-// Auth States
 const showPinModal = ref(false)
 const isLoggingIn = ref(false)
 const pinValue = ref('')
 const selectedUsername = ref('')
 
-// --- BARCODE LOGIC (Unverändert) ---
 const isBarcodeEnabled = ref(false)
 const barcodeBuffer = ref('')
 const lastKeyTime = ref(0)
@@ -66,7 +161,6 @@ const handleGlobalKeyDown = (event: KeyboardEvent) => {
   lastKeyTime.value = currentTime
 }
 
-// --- QUICK LOGIN LOGIC ---
 const checkQuickLogin = async () => {
   try {
     const { data: settings } = await apiClient.get('/api/settings')
@@ -75,7 +169,6 @@ const checkQuickLogin = async () => {
     if (settings.quickLogin) {
       const { data: tree } = await apiClient.get('/api/org-units/tree')
       if (tree && tree.length > 0) {
-        // Wir initialisieren den Start-Level mit dem Ergebnis vom Backend
         currentLevel.value = { subUnits: tree, usernames: [], name: 'Start' }
         hasQuickLogin.value = true
       }
@@ -85,13 +178,10 @@ const checkQuickLogin = async () => {
   }
 }
 
-// NEU: Diese Methode entscheidet nun anhand von isUser, was passiert
 const handleItemClick = (item: any) => {
   if (item.isUser) {
-    // Wenn es ein flacher User-Eintrag ist, direkt zum Login-Prozess
     selectUser(item.name)
   } else {
-    // Wenn es eine OU ist, tiefer navigieren
     navigationHistory.value.push({ ...currentLevel.value })
     currentLevel.value = item
   }
@@ -173,114 +263,19 @@ async function submit() {
   }
 }
 
+// Event Listener sauber typisiert aufgesetzt
 onMounted(() => {
   checkQuickLogin()
-  window.addEventListener('keydown', handleGlobalKeyDown)
+  globalThis.addEventListener('keydown', handleGlobalKeyDown)
 })
 onUnmounted(() => {
-  window.removeEventListener('keydown', handleGlobalKeyDown)
+  globalThis.removeEventListener('keydown', handleGlobalKeyDown)
 })
 </script>
 
-<template>
-  <div class="login-container">
-    <div v-if="isBarcodeEnabled" class="barcode-status">
-      <span class="status-dot"></span> Barcode-Scanner aktiv
-    </div>
-
-    <div class="login-card">
-      <h1>Willkommen</h1>
-      <p class="subtitle">{{ isManualMode ? 'Bitte melde dich an' : 'Schnellauswahl nutzen' }}</p>
-
-      <div v-if="isLoggingIn" class="auto-login-overlay">
-        <div class="spinner"></div>
-        <p>Prüfe Identität...</p>
-      </div>
-
-      <div v-if="!isManualMode && hasQuickLogin && !isLoggingIn" class="quick-login-content">
-        <div class="tree-nav">
-          <button v-if="navigationHistory.length > 0" class="back-link" @click="goBack">
-            ← Zurück
-          </button>
-          <span class="current-node">{{ currentLevel?.name }}</span>
-        </div>
-
-        <div class="selection-scroll-area">
-          <div class="selection-grid">
-            <button
-              v-for="item in currentLevel?.subUnits"
-              :key="item.id || item.name"
-              class="grid-item"
-              :class="{ 'user-item': item.isUser }"
-              @click="handleItemClick(item)"
-            >
-              <span class="icon">{{ item.isUser ? '👤' : '📁' }}</span>
-              {{ item.name }}
-            </button>
-
-            <button
-              v-for="user in currentLevel?.usernames"
-              :key="user"
-              class="grid-item user-item"
-              @click="selectUser(user)"
-            >
-              <span class="icon">👤</span> {{ user }}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <form v-else-if="!isLoggingIn" class="login-form" @submit.prevent="submit">
-        <div class="input-group">
-          <label>Nutzername</label>
-          <input
-            id="username-field"
-            v-model="form.username"
-            required
-            :class="{ 'input-keyboard-active': kbStore.activeInputId === 'username-field' }"
-            @focus="openKb('username-field', form.username)"
-          />
-        </div>
-        <div class="input-group">
-          <label>Passwort</label>
-          <input
-            id="password-field"
-            v-model="form.password"
-            required
-            type="password"
-            @focus="openKb('password-field', form.password)"
-            :class="{ 'input-keyboard-active': kbStore.activeInputId === 'password-field' }"
-          />
-        </div>
-        <button :disabled="authStore.isLoading" class="btn-login" type="submit">Login</button>
-      </form>
-
-      <p v-if="error" class="error-msg">{{ error }}</p>
-      <div v-if="hasQuickLogin && !isLoggingIn" class="mode-switch">
-        <button class="btn-switch" @click="isManualMode = !isManualMode">
-          {{ isManualMode ? 'Zur Schnellauswahl' : 'Manuelle Anmeldung' }}
-        </button>
-      </div>
-    </div>
-
-    <div v-if="showPinModal" class="pin-overlay">
-      <div class="pin-modal animate-pop">
-        <h3>Hallo {{ selectedUsername }}</h3>
-        <Numpad v-model="pinValue" :maxLength="6" @complete="handlePinComplete" />
-        <div class="pin-footer-actions">
-          <button class="btn-abort" @click="switchToManual(selectedUsername)">
-            Passwort nutzen
-          </button>
-          <button class="btn-close" @click="showPinModal = false">Abbrechen</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
 <style scoped>
 .user-item {
-  background: #ebf8ff !important; /* Leicht bläulich für User */
+  background: #ebf8ff !important;
   border-color: #bee3f8 !important;
 }
 
@@ -325,7 +320,6 @@ onUnmounted(() => {
   }
 }
 
-/* DEINE ORIGINAL STYLES */
 .auto-login-overlay {
   padding: 2rem;
   display: flex;
@@ -360,7 +354,6 @@ onUnmounted(() => {
   margin-top: 1.5rem;
 }
 
-/* Bestehende Styles */
 .pin-overlay {
   position: fixed;
   inset: 0;
@@ -387,12 +380,10 @@ onUnmounted(() => {
   font-size: 1.4rem;
   margin-bottom: 0.25rem;
 }
-
 .pin-modal p {
   color: #718096;
   margin-bottom: 1.5rem;
 }
-
 .btn-abort {
   font-size: 0.85rem;
   color: #3182ce;
@@ -401,7 +392,6 @@ onUnmounted(() => {
   cursor: pointer;
   text-decoration: underline;
 }
-
 .btn-close {
   padding: 0.5rem;
   color: #a0aec0;
@@ -414,7 +404,6 @@ onUnmounted(() => {
 .animate-pop {
   animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
-
 @keyframes pop {
   from {
     transform: scale(0.8);
@@ -430,50 +419,71 @@ onUnmounted(() => {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 20vh;
+  min-height: 80vh; /* Erhöht, damit die Box vertikal besser zentriert sitzt */
   padding: 1rem;
   position: relative;
 }
 
+/* BASIS CARD DESIGN */
 .login-card {
   background: white;
   padding: 2.5rem;
-  border-radius: 16px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+  border-radius: 24px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.05);
   width: 100%;
   max-width: 400px;
   text-align: center;
+  transition:
+    max-width 0.3s ease-in-out,
+    padding 0.3s ease-in-out; /* Weicher Übergang beim Modus-Wechsel */
 }
 
+/* NEU: WENN SCHNELLAUSWAHL AKTIV IST */
+.login-card.quick-login-wide {
+  max-width: 850px; /* Bietet massig Platz für Spalten */
+  padding: 3rem;
+}
+
+/* OPTIMIERT FÜR MEHR INHALT */
 .selection-scroll-area {
-  max-height: 250px;
+  max-height: 420px; /* Mehr Platz zum Scrollen auf großen Displays */
   overflow-y: auto;
-  margin: 1rem 0;
-  padding-right: 5px;
+  margin: 1.5rem 0;
+  padding-right: 8px;
 }
 
+/* NEU: INTELLIGENTES GRID DAS SICH AN DIE BREITE ANPASST */
 .selection-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  /* Erstellt automatisch so viele Spalten (min. 140px) wie reingehen */
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 14px;
 }
 
 .grid-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0.8rem;
+  justify-content: center;
+  padding: 1.2rem 0.8rem; /* Mehr vertikaler Platz für Icons */
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 14px;
   background: #f8fafc;
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.grid-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  background: #fff;
 }
 
 .icon {
-  margin-bottom: 4px;
-  font-size: 1.2rem;
+  margin-bottom: 6px;
+  font-size: 1.6rem; /* Größere, griffigere Icons */
 }
 
 .login-form {
@@ -481,11 +491,9 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 1.5rem;
 }
-
 .input-group {
   text-align: left;
 }
-
 .input-group label {
   display: block;
   font-size: 0.85rem;
@@ -493,7 +501,6 @@ onUnmounted(() => {
   color: #4a5568;
   margin-bottom: 0.5rem;
 }
-
 input {
   width: 100%;
   padding: 0.75rem;
@@ -501,7 +508,6 @@ input {
   border-radius: 8px;
   outline: none;
 }
-
 .btn-login {
   background: #3182ce;
   color: white;
@@ -526,7 +532,9 @@ h1 {
   display: flex;
   gap: 10px;
   align-items: center;
-  font-size: 0.85rem;
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
 }
 .back-link {
   background: none;
@@ -534,6 +542,7 @@ h1 {
   color: #3182ce;
   cursor: pointer;
   padding: 0;
+  font-weight: bold;
 }
 .mode-switch {
   margin-top: 1.5rem;
