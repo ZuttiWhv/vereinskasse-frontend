@@ -7,7 +7,7 @@
       </div>
 
       <div class="flex flex-col sm:flex-row w-full md:w-auto gap-3">
-        <div class="relative flex-grow">
+        <div class="relative grow">
           <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400"> 🔍 </span>
           <label for="searchBar" class="sr-only">Benutzer suchen</label>
           <input
@@ -271,7 +271,7 @@
                 />
                 <label
                   :for="'role-' + role.id"
-                  class="text-sm text-gray-700 cursor-pointer flex-grow select-none"
+                  class="text-sm text-gray-700 cursor-pointer grow select-none"
                   >{{ role.name }}</label
                 >
               </div>
@@ -398,7 +398,7 @@ const filteredUsers = computed(() => {
 
 const isFormValid = computed(() => {
   const basic =
-    formData.value.username.length >= 3 &&
+    formData.value.username.length >= 2 &&
     formData.value.roleIds.length > 0 &&
     formData.value.billingGroupId !== null
   return isEditing.value ? basic : basic && formData.value.password.length >= 4
