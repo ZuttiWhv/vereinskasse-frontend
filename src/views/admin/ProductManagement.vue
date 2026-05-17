@@ -21,7 +21,7 @@
             <tr class="bg-gray-50 border-b border-gray-100 text-gray-600 text-sm uppercase">
               <th class="px-6 py-4 font-semibold">Bild</th>
               <th class="px-6 py-4 font-semibold">Name / Anzeigename</th>
-              <th class="px-6 py-4 font-semibold">Barcode</th>
+              <th class="px-6 py-4 font-semibold">Barcodes</th>
               <th class="px-6 py-4 font-semibold">Status</th>
               <th class="px-6 py-4 font-semibold">Kategorie</th>
               <th class="px-6 py-4 font-semibold">Preis</th>
@@ -47,14 +47,21 @@
                 <div class="font-bold text-gray-900">{{ product.anzeigename || product.name }}</div>
                 <div class="text-xs text-gray-400 font-mono">{{ product.name }}</div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div v-if="product.barcode" class="flex items-center gap-1 text-gray-600">
-                  <span class="text-lg">🏷️</span>
-                  <span class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">{{
-                    product.barcode
-                  }}</span>
+              <td class="px-6 py-4">
+                <div
+                  v-if="product.barcodes && product.barcodes.length > 0"
+                  class="flex flex-wrap gap-1 max-w-[220px]"
+                >
+                  <div
+                    v-for="code in product.barcodes"
+                    :key="code"
+                    class="flex items-center gap-1 text-gray-600 bg-gray-100 border border-gray-200 px-2 py-0.5 rounded font-mono text-[11px]"
+                  >
+                    <span>🏷️</span>
+                    <span>{{ code }}</span>
+                  </div>
                 </div>
-                <span v-else class="text-gray-300 text-xs italic">Kein Barcode</span>
+                <span v-else class="text-gray-300 text-xs italic">Keine Barcodes</span>
               </td>
               <td class="px-6 py-4">
                 <span
@@ -113,7 +120,7 @@
         <div class="p-6 overflow-y-auto space-y-4">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1"
+              <label for="product-name" class="block text-sm font-medium text-gray-700 mb-1"
                 >Interner Name (eindeutig)</label
               >
               <input
@@ -127,7 +134,7 @@
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Anzeigename</label>
+              <label for="product-showname" class="block text-sm font-medium text-gray-700 mb-1">Anzeigename</label>
               <input
                 v-model="formData.anzeigename"
                 id="product-showname"
@@ -142,7 +149,7 @@
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Preis (€)</label>
+              <label for="product-price" class="block text-sm font-medium text-gray-700 mb-1">Preis (€)</label>
               <input
                 v-model="displayPrice"
                 id="product-price"
@@ -154,10 +161,11 @@
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Kategorie</label>
+              <label for="category-selection" class="block text-sm font-medium text-gray-700 mb-1">Kategorie</label>
               <select
+                id="category-selection"
                 v-model="formData.categoryId"
-                class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2  bg-white"
+                class="w-full px-4 py-2 border rounded-lg outline-none focus:ring-2 bg-white"
               >
                 <option :value="null" disabled>Bitte wählen...</option>
                 <option v-for="cat in categories" :key="cat.id" :value="cat.id">
@@ -167,30 +175,55 @@
             </div>
           </div>
 
-          <div class="p-4 bg-blue-50/50 border border-blue-100 rounded-lg">
-            <label class="block text-sm font-bold text-blue-800 mb-1">Produkt-Barcode (EAN)</label>
+          <div class="p-4 bg-blue-50/50 border border-blue-100 rounded-lg space-y-3">
+            <label class="block text-sm font-bold text-blue-800">Produkt-Barcodes (EAN)</label>
             <div class="flex gap-2">
               <input
                 id="product-barcode"
-                v-model="formData.barcode"
-                @focus="kbStore.open('product-barcode', formData.barcode || '', 'numeric')"
+                v-model="newBarcode"
+                @focus="kbStore.open('product-barcode', newBarcode, 'numeric')"
                 :class="{ 'input-keyboard-active': kbStore.activeInputId === 'product-barcode' }"
                 type="text"
                 class="flex-1 px-4 py-2 border border-blue-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white font-mono"
                 placeholder="Barcode scannen oder eingeben..."
+                @keydown.enter.prevent="addBarcode"
               />
               <button
                 type="button"
-                @click="formData.barcode = ''"
-                class="px-3 py-2 bg-white border border-blue-200 rounded-lg text-gray-400 hover:text-red-500 transition"
-                title="Barcode löschen"
+                @click="addBarcode"
+                class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition text-xl flex items-center justify-center shadow-sm"
+                title="Barcode hinzufügen"
               >
-                ✕
+                +
               </button>
             </div>
-            <p class="text-[10px] text-blue-600 mt-1">
-              Tipp: Klicke in das Feld und nutze den Hardware-Scanner, um den Barcode direkt zu
-              erfassen.
+            <p class="text-[10px] text-blue-600">
+              Tipp: Klicke in das Feld und scanne. Drücke das „+“ oder Enter, um den Code an dieses
+              Produkt zu binden.
+            </p>
+
+            <div
+              v-if="formData.barcodes.length > 0"
+              class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2"
+            >
+              <div
+                v-for="code in formData.barcodes"
+                :key="code"
+                class="flex items-center justify-between bg-white border border-blue-100 rounded-lg px-3 py-1.5 shadow-sm animate-in fade-in duration-150"
+              >
+                <span class="font-mono text-xs text-gray-700 font-bold">🏷️ {{ code }}</span>
+                <button
+                  type="button"
+                  @click="removeBarcode(code)"
+                  class="text-gray-400 hover:text-red-500 p-1 transition"
+                  title="Barcode löschen"
+                >
+                  🗑️
+                </button>
+              </div>
+            </div>
+            <p v-else class="text-xs text-gray-400 italic text-center py-1">
+              Noch keine Barcodes für dieses Produkt hinterlegt.
             </p>
           </div>
 
@@ -212,11 +245,12 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Produktbild</label>
+            <label for="product-image" class="block text-sm font-medium text-gray-700 mb-1">Produktbild</label>
             <div
               class="flex items-center gap-4 p-4 border-2 border-dashed border-gray-200 rounded-lg"
             >
               <img
+                id="product-image"
                 v-if="previewUrl || formData.imagePath"
                 :src="previewUrl || mediaApi.getImageUrl(formData.imagePath, 200)"
                 class="h-20 w-20 object-cover rounded-lg border shadow-sm"
@@ -277,7 +311,7 @@ interface Product {
   name: string
   anzeigename: string
   price: number
-  barcode: string | null // NEU
+  barcodes: string[] // GEÄNDERT: Array statt einzelner String
   imagePath: string
   category: Category
   active: boolean
@@ -288,12 +322,15 @@ const categories = ref<Category[]>([])
 const showModal = ref(false)
 const isEditing = ref(false)
 
+// GEÄNDERT: Für temporäre Eingaben im Modal-Feld
+const newBarcode = ref('')
+
 const formData = ref({
   id: null as number | null,
   name: '',
   anzeigename: '',
   price: 0,
-  barcode: '' as string | null, // NEU
+  barcodes: [] as string[], // GEÄNDERT: Array statt String | null
   categoryId: null as number | null,
   imagePath: '',
   active: true,
@@ -307,6 +344,24 @@ const isFormValid = computed(() => {
   return formData.value.name && formData.value.categoryId && displayPrice.value >= 0
 })
 
+// NEU: Fügt einen Barcode aus dem Eingabefeld der Liste hinzu
+const addBarcode = () => {
+  const code = newBarcode.value.trim()
+  if (code && !formData.value.barcodes.includes(code)) {
+    formData.value.barcodes.push(code)
+    newBarcode.value = ''
+    // Virtuelles Keyboard zurücksetzen, falls offen
+    if (kbStore.activeInputId === 'product-barcode') {
+      kbStore.open('product-barcode', '', 'numeric')
+    }
+  }
+}
+
+// NEU: Entfernt einen Barcode aus der Liste (Mülltonnen-Aktion)
+const removeBarcode = (codeToRemove: string) => {
+  formData.value.barcodes = formData.value.barcodes.filter((code) => code !== codeToRemove)
+}
+
 const fetchProducts = async () => {
   const { data } = await apiClient.get('/api/products')
   products.value = data
@@ -318,6 +373,7 @@ const fetchCategories = async () => {
 }
 
 const openModal = (product?: Product) => {
+  newBarcode.value = '' // Eingabefeld leeren
   if (product) {
     isEditing.value = true
     formData.value = {
@@ -325,7 +381,7 @@ const openModal = (product?: Product) => {
       name: product.name,
       anzeigename: product.anzeigename,
       price: product.price,
-      barcode: product.barcode || '', // Mapping ergänzt
+      barcodes: product.barcodes ? [...product.barcodes] : [], // GEÄNDERT: Array klonen
       categoryId: product.category?.id || null,
       imagePath: product.imagePath,
       active: product.active,
@@ -338,7 +394,7 @@ const openModal = (product?: Product) => {
       name: '',
       anzeigename: '',
       price: 0,
-      barcode: '', // Initial leer
+      barcodes: [], // GEÄNDERT: Array initial leer
       categoryId: null,
       imagePath: '',
       active: true,
@@ -360,6 +416,11 @@ const handleFileUpload = (event: Event) => {
 
 const saveProduct = async () => {
   try {
+    // Bevor wir speichern, prüfen wir ob noch ungespeicherter Text im Barcodefeld steht
+    if (newBarcode.value.trim()) {
+      addBarcode()
+    }
+
     if (selectedFile.value) {
       try {
         const uploadedFilename = await mediaApi.uploadImage(selectedFile.value)
@@ -376,7 +437,7 @@ const saveProduct = async () => {
       name: formData.value.name,
       anzeigename: formData.value.anzeigename,
       price: finalPriceInCents,
-      barcode: formData.value.barcode || null, // NEU: Barcode senden
+      barcodes: formData.value.barcodes, // GEÄNDERT: Sendet das vollständige Array
       imagePath: formData.value.imagePath,
       categoryId: formData.value.categoryId,
       active: formData.value.active,

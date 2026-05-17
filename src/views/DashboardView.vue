@@ -189,7 +189,7 @@
             </div>
           </div>
           <div class="input-group">
-            <label>Anlass (optional)</label>
+            <label for="issue-reason">Anlass (optional)</label>
             <input
               v-model="issueReason"
               placeholder="z.B. Geburtstag..."
@@ -226,7 +226,7 @@ const kbStore = useKeyboardStore()
 
 interface Product extends BaseProduct {
   active: boolean
-  barcode?: string
+  barcodes: string[]
 }
 
 const categories = ref<Category[]>([])
