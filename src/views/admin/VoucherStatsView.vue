@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import apiClient from '@/api/client'
-import { format } from 'date-fns' // Optional, falls installiert, sonst nativ
-import { de } from 'date-fns/locale'
 
 interface VoucherStat {
   userId: number
@@ -58,12 +56,12 @@ const sortedStats = computed(() => {
 
     <section class="filter-bar">
       <div class="input-group">
-        <label>Von:</label>
-        <input type="date" v-model="dateFrom" @change="fetchStats" />
+        <label for="dateFrom">Von:</label>
+        <input id="dateFrom" type="date" v-model="dateFrom" @change="fetchStats" />
       </div>
       <div class="input-group">
-        <label>Bis:</label>
-        <input type="date" v-model="dateTo" @change="fetchStats" />
+        <label for="dateTo">Bis:</label>
+        <input id="dateTo" type="date" v-model="dateTo" @change="fetchStats" />
       </div>
       <button class="btn-refresh" @click="fetchStats" :disabled="isLoading">
         {{ isLoading ? 'Lädt...' : 'Aktualisieren' }}

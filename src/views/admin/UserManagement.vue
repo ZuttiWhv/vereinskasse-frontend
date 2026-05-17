@@ -140,7 +140,7 @@
                 <button
                   v-if="authStore.hasAuthority('WRITE_USER')"
                   type="button"
-                  @click="openDepositModal(user)"
+                  @click="openDepositModal(user, false)"
                   class="text-emerald-600 hover:text-emerald-800 font-medium text-sm"
                 >
                   Einzahlen
@@ -160,6 +160,55 @@
                   class="text-red-400 hover:text-red-600 font-medium text-sm"
                 >
                   Löschen
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div
+      v-if="archivedUsers.length > 0"
+      class="mt-8 bg-amber-50 border border-amber-200 rounded-xl p-6"
+    >
+      <h2 class="text-lg font-bold text-amber-800 mb-2">⚠️ Offene Konten ehemaliger Mitglieder</h2>
+      <p class="text-sm text-amber-700 mb-4">
+        Diese Benutzer wurden gelöscht/archiviert, haben aber kein ausgeglichenes Konto. Du kannst
+        hier Guthaben auszahlen oder Schulden begleichen, um das Konto auf 0,00 € zu bringen.
+      </p>
+
+      <div class="bg-white rounded-lg border border-amber-100 overflow-hidden">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr
+              class="bg-amber-100/50 text-amber-900 text-xs font-bold uppercase border-b border-amber-100"
+            >
+              <th class="px-6 py-3">Ehemaliger Benutzer</th>
+              <th class="px-6 py-3 text-right">Offener Betrag</th>
+              <th class="px-6 py-3 text-right">Aktion</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-amber-50">
+            <tr
+              v-for="user in archivedUsers"
+              :key="user.id"
+              class="hover:bg-amber-50/30 transition"
+            >
+              <td class="px-6 py-4 font-semibold text-gray-800">{{ user.username }}</td>
+              <td
+                class="px-6 py-4 text-right font-mono font-bold"
+                :class="user.balance < 0 ? 'text-red-500' : 'text-emerald-600'"
+              >
+                {{ formatCurrency(user.balance) }}
+              </td>
+              <td class="px-6 py-4 text-right">
+                <button
+                  type="button"
+                  @click="openDepositModal(user, true)"
+                  class="bg-amber-600 hover:bg-amber-700 text-white text-xs px-3 py-1.5 rounded transition font-semibold"
+                >
+                  Konto ausgleichen
                 </button>
               </td>
             </tr>
@@ -306,20 +355,26 @@
         class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200"
       >
         <div class="p-6 border-b border-gray-100">
-          <h2 class="text-xl font-bold text-gray-800">Guthaben aufladen</h2>
+          <h2 class="text-xl font-bold text-gray-800">
+            {{ selectedUserForDeposit?.active ? 'Guthaben aufladen' : 'Konto ausgleichen' }}
+          </h2>
           <p class="text-sm text-gray-500">Für {{ selectedUserForDeposit?.username }}</p>
         </div>
         <div class="p-6">
-          <label for="depAmount" class="block text-sm font-medium text-gray-700 mb-2 text-center"
-            >Betrag in Euro</label
-          >
+          <label for="depAmount" class="block text-sm font-medium text-gray-700 mb-2 text-center">
+            {{
+              !selectedUserForDeposit?.active && selectedUserForDeposit?.balance > 0
+                ? 'Rückzahlungsbetrag (Auszahlung)'
+                : 'Betrag in Euro'
+            }}
+          </label>
           <div class="relative">
             <input
               id="depAmount"
               v-model="depositAmount"
               type="number"
               step="0.01"
-              min="0.01"
+              :min="selectedUserForDeposit?.active ? 0.01 : -9999"
               @focus="kbStore.open('depAmount', String(depositAmount))"
               :class="[
                 'w-full pl-4 pr-10 py-4 border-2 rounded-xl text-3xl font-bold text-center outline-none transition-all',
@@ -333,15 +388,24 @@
               >€</span
             >
           </div>
+
+          <p v-if="depositAmount < 0" class="text-xs text-red-500 text-center mt-2 font-semibold">
+            ⚠️ Negativer Betrag: Es wird eine Rückzahlung verbucht!
+          </p>
         </div>
         <div class="p-6 border-t border-gray-100 bg-gray-50 flex flex-col gap-2">
           <button
             type="button"
             @click="handleDeposit"
-            :disabled="depositAmount <= 0"
-            class="w-full py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition font-bold disabled:opacity-50"
+            :disabled="selectedUserForDeposit?.active ? depositAmount <= 0 : depositAmount === 0"
+            class="w-full py-3 text-white rounded-lg transition font-bold disabled:opacity-50"
+            :class="
+              depositAmount < 0
+                ? 'bg-red-600 hover:bg-red-700'
+                : 'bg-emerald-600 hover:bg-emerald-700'
+            "
           >
-            Einzahlung bestätigen
+            {{ depositAmount < 0 ? 'Rückzahlung bestätigen' : 'Einzahlung bestätigen' }}
           </button>
           <button
             type="button"
@@ -367,6 +431,7 @@ const authStore = useAuthStore()
 
 // --- STATE ---
 const users = ref<any[]>([])
+const archivedUsers = ref<any[]>([]) // GEÄNDERT: Für gelöschte User mit offenem Saldo
 const roles = ref<any[]>([])
 const billingGroups = ref<any[]>([])
 const orgUnits = ref<any[]>([])
@@ -420,6 +485,16 @@ const fetchUsers = async () => {
     users.value = Object.values(data)
   } catch (error) {
     console.error('Users-Error:', error)
+  }
+}
+
+// GEÄNDERT: Holt die Archiv-Daten vom Backend
+const fetchArchivedUsers = async () => {
+  try {
+    const { data } = await apiClient.get('/api/users/archived-open-balance')
+    archivedUsers.value = data
+  } catch (error) {
+    console.error('Archived-Users-Error:', error)
   }
 }
 
@@ -494,23 +569,40 @@ const generateAllBarcodes = async () => {
   }
 }
 
-const openDepositModal = (user: any) => {
-  selectedUserForDeposit.value = user
-  depositAmount.value = 0
+// GEÄNDERT: Steuert die automatische Vorausberechnung und setzt das active-Flag
+const openDepositModal = (user: any, isArchived = false) => {
+  selectedUserForDeposit.value = { ...user, active: !isArchived }
+
+  if (isArchived && user.balance !== 0) {
+    // Schlägt den exakten mathematischen Kehrwert vor, um auf 0,00 € zu kommen
+    depositAmount.value = (user.balance * -1) / 100
+  } else {
+    depositAmount.value = 0
+  }
   showDepositModal.value = true
 }
 
+// GEÄNDERT: Validiert nach Aktivierungsstatus und triggert beide Listen-Refreshes
 const handleDeposit = async () => {
-  if (depositAmount.value <= 0 || !selectedUserForDeposit.value) return
+  if (!selectedUserForDeposit.value) return
+
+  // Harter UI-Schutzriegel vor der API-Anfrage
+  if (selectedUserForDeposit.value.active && depositAmount.value <= 0) return
+  if (!selectedUserForDeposit.value.active && depositAmount.value === 0) return
+
   try {
     const amountInCents = Math.round(depositAmount.value * 100)
     await apiClient.post(`/api/users/${selectedUserForDeposit.value.id}/deposit`, amountInCents)
+
+    // Beide Tabellen frisch laden
     await fetchUsers()
+    await fetchArchivedUsers()
+
     if (selectedUserForDeposit.value.id === authStore.user?.id) await authStore.fetchProfile()
     showDepositModal.value = false
   } catch (error) {
     console.error('Deposit-Error:', error)
-    alert('Fehler.')
+    alert('Fehler bei der Buchung.')
   }
 }
 
@@ -563,14 +655,20 @@ const saveUser = async () => {
   }
 }
 
+// GEÄNDERT: Nach dem Archivieren auch die Altlasten-Liste neu laden
 const deleteUser = async (user: any) => {
-  if (confirm(`Benutzer "${user.username}" wirklich löschen?`)) {
+  if (
+    confirm(
+      `Benutzer "${user.username}" wirklich archivieren? Der Name wird frei, die Guthabenhistorie bleibt im System.`,
+    )
+  ) {
     try {
       await apiClient.delete(`/api/users/${user.id}`)
       await fetchUsers()
+      await fetchArchivedUsers() // Aktualisiert die Altlasten-Box sofort
     } catch (error) {
       console.error('Delete-Error:', error)
-      alert('Fehler.')
+      alert('Fehler beim Löschen.')
     }
   }
 }
@@ -581,6 +679,7 @@ const formatCurrency = (cents: number) =>
 onMounted(() => {
   fetchSettings()
   fetchUsers()
+  fetchArchivedUsers() // GEÄNDERT: Lädt die Altlasten beim Start
   fetchRoles()
   fetchBillingGroups()
   fetchOrgUnits()
