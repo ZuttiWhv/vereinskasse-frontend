@@ -182,7 +182,9 @@
           </div>
 
           <div class="p-4 bg-blue-50/50 border border-blue-100 rounded-lg space-y-3">
-            <label for="product-barcode" class="block text-sm font-bold text-blue-800">Produkt-Barcodes (EAN)</label>
+            <label for="product-barcode" class="block text-sm font-bold text-blue-800"
+              >Produkt-Barcodes (EAN)</label
+            >
             <div class="flex gap-2">
               <input
                 id="product-barcode"
@@ -206,6 +208,10 @@
             <p class="text-[10px] text-blue-600">
               Tipp: Klicke in das Feld und scanne. Drücke das „+“ oder Enter, um den Code an dieses
               Produkt zu binden.
+            </p>
+
+            <p v-if="barcodeError" class="text-xs text-red-600 font-bold mt-1 animate-pulse">
+              ⚠️ {{ barcodeError }}
             </p>
 
             <div
