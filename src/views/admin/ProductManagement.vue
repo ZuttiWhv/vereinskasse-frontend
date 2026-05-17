@@ -134,7 +134,9 @@
               />
             </div>
             <div>
-              <label for="product-showname" class="block text-sm font-medium text-gray-700 mb-1">Anzeigename</label>
+              <label for="product-showname" class="block text-sm font-medium text-gray-700 mb-1"
+                >Anzeigename</label
+              >
               <input
                 v-model="formData.anzeigename"
                 id="product-showname"
@@ -149,7 +151,9 @@
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label for="product-price" class="block text-sm font-medium text-gray-700 mb-1">Preis (€)</label>
+              <label for="product-price" class="block text-sm font-medium text-gray-700 mb-1"
+                >Preis (€)</label
+              >
               <input
                 v-model="displayPrice"
                 id="product-price"
@@ -161,7 +165,9 @@
               />
             </div>
             <div>
-              <label for="category-selection" class="block text-sm font-medium text-gray-700 mb-1">Kategorie</label>
+              <label for="category-selection" class="block text-sm font-medium text-gray-700 mb-1"
+                >Kategorie</label
+              >
               <select
                 id="category-selection"
                 v-model="formData.categoryId"
@@ -176,7 +182,7 @@
           </div>
 
           <div class="p-4 bg-blue-50/50 border border-blue-100 rounded-lg space-y-3">
-            <label class="block text-sm font-bold text-blue-800">Produkt-Barcodes (EAN)</label>
+            <label for="product-barcode" class="block text-sm font-bold text-blue-800">Produkt-Barcodes (EAN)</label>
             <div class="flex gap-2">
               <input
                 id="product-barcode"
@@ -245,7 +251,9 @@
           </div>
 
           <div>
-            <label for="product-image" class="block text-sm font-medium text-gray-700 mb-1">Produktbild</label>
+            <label for="product-image" class="block text-sm font-medium text-gray-700 mb-1"
+              >Produktbild</label
+            >
             <div
               class="flex items-center gap-4 p-4 border-2 border-dashed border-gray-200 rounded-lg"
             >
@@ -344,16 +352,40 @@ const isFormValid = computed(() => {
   return formData.value.name && formData.value.categoryId && displayPrice.value >= 0
 })
 
-// NEU: Fügt einen Barcode aus dem Eingabefeld der Liste hinzu
+// NEU: Reactive Variable für Fehlermeldungen
+const barcodeError = ref('')
+
 const addBarcode = () => {
   const code = newBarcode.value.trim()
-  if (code && !formData.value.barcodes.includes(code)) {
-    formData.value.barcodes.push(code)
-    newBarcode.value = ''
-    // Virtuelles Keyboard zurücksetzen, falls offen
-    if (kbStore.activeInputId === 'product-barcode') {
-      kbStore.open('product-barcode', '', 'numeric')
-    }
+  barcodeError.value = '' // Fehler zurücksetzen
+
+  // 1. Prüfung: Ist das Feld leer?
+  if (!code) return
+
+  // 2. Prüfung: Besteht der Code NUR aus Zahlen?
+  if (!/^\d+$/.test(code)) {
+    barcodeError.value = 'Ein Barcode darf nur aus Ziffern (0-9) bestehen!'
+    return
+  }
+
+  // 3. Prüfung: Hat er eine gültige Länge (EAN-8 oder EAN-13)?
+  if (code.length !== 8 && code.length !== 13) {
+    barcodeError.value = `Ungültige Länge (${code.length} Zeichen). Ein EAN-Barcode muss exakt 8 oder 13 Stellen haben!`
+    return
+  }
+
+  // 4. Prüfung: Existiert der Code schon in der aktuellen Liste?
+  if (formData.value.barcodes.includes(code)) {
+    barcodeError.value = 'Dieser Barcode ist für dieses Produkt bereits hinzugefügt.'
+    return
+  }
+
+  // Wenn alle Prüfungen bestanden sind: Hinzufügen!
+  formData.value.barcodes.push(code)
+  newBarcode.value = ''
+
+  if (kbStore.activeInputId === 'product-barcode') {
+    kbStore.open('product-barcode', '', 'numeric')
   }
 }
 
