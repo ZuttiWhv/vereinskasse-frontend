@@ -360,7 +360,7 @@ const selectCategory = async (cat: Category) => {
   isLoading.value = true
   try {
     products.value = ((await ShopService.getProductsByCategory(cat.id)) as Product[]).filter(
-      (p) => p.active !== false,
+      (p) => p.active,
     )
   } finally {
     isLoading.value = false
