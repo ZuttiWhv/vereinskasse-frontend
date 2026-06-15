@@ -393,25 +393,30 @@ const handlePurchase = async (useVoucher: boolean = false, continueShopping: boo
   if (!selectedProduct.value) return
   isLoading.value = true
   try {
+    // 1. Kauf ausführen
     await apiClient.post('/api/sales', {
       productId: selectedProduct.value.id,
       amount: useVoucher ? 1 : quantity.value,
       useVoucher,
     })
 
+    // 2. Kontostand AKTUALISIEREN
+    // Da deine fetchProfile()-Methode genau das macht (GET /api/users/me),
+    // können wir sie hier einfach wiederverwenden.
+    await authStore.fetchProfile()
+
     if (continueShopping) {
-      // Gutscheine sicherheitshalber neu laden, falls sich die Anzahl geändert hat
+      // Gutscheine laden
       const { data } = await apiClient.get<PrepaidVoucherDTO[]>('/api/vouchers/available')
       availableVouchers.value = data
 
-      // Ansicht zurücksetzen (zurück zur Produktauswahl)
+      // Ansicht zurücksetzen
       selectedProduct.value = null
       forceSelfPay.value = false
       quantity.value = 1
       searchQuery.value = ''
-      kbStore.close() // Tastatur schließen, falls offen
+      kbStore.close()
     } else {
-      // Bisheriges Verhalten: Logout
       authStore.logout()
       router.push('/login')
     }
@@ -421,7 +426,6 @@ const handlePurchase = async (useVoucher: boolean = false, continueShopping: boo
     isLoading.value = false
   }
 }
-
 const handleIssueVoucher = async () => {
   if (!selectedProduct.value) return
   isLoading.value = true
