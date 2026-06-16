@@ -1,6 +1,6 @@
 <template>
   <div class="dashboard">
-    <transition name="fade">
+    <transition name="welcome-fade">
       <div v-if="showWelcome" class="welcome-toast">
         <span class="icon">👋</span>
         <p>
@@ -832,31 +832,23 @@ const formatPrice = (c: number) =>
 }
 .welcome-toast {
   position: fixed;
-  top: 20px;
-  right: 20px;
+  top: 25%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   background: #2d3748;
   color: white;
-  padding: 1rem 1.5rem;
-  border-radius: 1rem;
+  padding: 1.5rem 2.5rem;
+  border-radius: 1.5rem;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  gap: 1rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
   z-index: 2000;
+  font-size: 1.25rem;
   font-weight: 600;
+  pointer-events: none; /* Verhindert Klick-Blockade */
 }
 
-.fade-enter-active,
-.fade-leave-active {
-  transition:
-    opacity 0.5s,
-    transform 0.5s;
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-  transform: translateY(-20px);
-}
 
 @keyframes pop {
   from {
