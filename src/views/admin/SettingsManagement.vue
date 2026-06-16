@@ -131,25 +131,6 @@
         </div>
 
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
-          <h2 class="text-lg font-semibold border-b pb-2 text-emerald-700">Daten & Export</h2>
-          <div class="flex items-center justify-between">
-            <div class="flex flex-col grow">
-              <span class="font-medium text-gray-700">Mitglieder-Barcodes exportieren</span>
-              <p class="text-xs text-gray-500">
-                Erzeugt eine PDF-Liste aller Mitglieder mit ihren scanbaren Codes.
-              </p>
-            </div>
-            <button
-              type="button"
-              @click="downloadBarcodePdf"
-              class="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition text-sm font-semibold"
-            >
-              <span>📄</span> PDF Export
-            </button>
-          </div>
-        </div>
-
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
           <h2 class="text-lg font-semibold border-b pb-2 text-emerald-700">Vereinslogo</h2>
           <div class="flex items-center gap-6">
             <div
@@ -341,25 +322,6 @@ const fetchSettings = async () => {
     settings.value = data
   } catch (error) {
     console.error('Settings laden fehlgeschlagen:', error)
-  }
-}
-
-const downloadBarcodePdf = async () => {
-  try {
-    const response = await apiClient.get('/api/export/user-barcodes-pdf', {
-      responseType: 'blob',
-    })
-    const url = globalThis.URL.createObjectURL(new Blob([response.data]))
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', 'mitglieder_barcodes.pdf')
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    globalThis.URL.revokeObjectURL(url)
-  } catch (error) {
-    console.error('Export Error:', error)
-    alert('Export fehlgeschlagen.')
   }
 }
 

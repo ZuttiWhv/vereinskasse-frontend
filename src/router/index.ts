@@ -69,6 +69,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, requiredAuthorities: 'WRITE_BILLING_GROUP' },
   },
   {
+    path: '/admin/pdfexport',
+    name: 'pdf-export',
+    component: () => import('@/views/admin/ExportView.vue'),
+    meta: { requiresAuth: true, requiredAuthorities: 'EXPORT_PRODUCT_BARCODES' },
+  },
+  {
     path: '/profile',
     name: 'profile-settings',
     component: () => import('@/views/ProfileSettings.vue'),

@@ -118,6 +118,13 @@
                   >📊 Monatsabschluss</router-link
                 >
                 <router-link
+                    v-if="authStore.hasAuthority('EXPORT_PRODUCT_BARCODES')"
+                    to="/admin/pdfexport"
+                    class="drop-item font-semibold text-emerald-600"
+                    @click="isAdminMenuOpen = false"
+                >Listendruck</router-link
+                >
+                <router-link
                   v-if="authStore.hasAuthority('WRITE_SETTINGS')"
                   to="/admin/settings"
                   class="drop-item"
