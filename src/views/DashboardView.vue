@@ -123,8 +123,11 @@
                   <span class="summary-value gratis">GRATIS</span>
                 </div>
                 <div class="action-stack">
-                  <button class="btn-main pulse" @click="handlePurchase(true)">
-                    Gutschein einlösen
+                  <button class="btn-main pulse" @click="handlePurchase(true, false)">
+                    Einlösen & Logout
+                  </button>
+                  <button class="btn-secondary-main" @click="handlePurchase(true, true)">
+                    Einlösen & weiter einkaufen
                   </button>
                   <button class="btn-selfpay" @click="forceSelfPay = true">
                     Trotzdem selbst bezahlen
@@ -157,7 +160,12 @@
                   }}</span>
                 </div>
                 <div class="action-stack">
-                  <button class="btn-main" @click="handlePurchase(false)">Kauf bestätigen</button>
+                  <button class="btn-main" @click="handlePurchase(false, false)">
+                    Kaufen & Logout
+                  </button>
+                  <button class="btn-secondary-main" @click="handlePurchase(false, true)">
+                    Kaufen & weiter einkaufen
+                  </button>
                   <div class="secondary-actions">
                     <button class="btn-alt-yellow" @click="showIssueModal = true">
                       Spenderrunde 🍻
@@ -352,7 +360,7 @@ const selectCategory = async (cat: Category) => {
   isLoading.value = true
   try {
     products.value = ((await ShopService.getProductsByCategory(cat.id)) as Product[]).filter(
-      (p) => p.active !== false,
+      (p) => p.active,
     )
   } finally {
     isLoading.value = false
@@ -381,23 +389,43 @@ const clearSearch = () => {
   kbStore.close()
 }
 
-const handlePurchase = async (useVoucher: boolean = false) => {
+const handlePurchase = async (useVoucher: boolean = false, continueShopping: boolean = false) => {
   if (!selectedProduct.value) return
   isLoading.value = true
   try {
+    // 1. Kauf ausführen
     await apiClient.post('/api/sales', {
       productId: selectedProduct.value.id,
       amount: useVoucher ? 1 : quantity.value,
       useVoucher,
     })
-    authStore.logout()
-    router.push('/login')
+
+    // 2. Kontostand AKTUALISIEREN
+    // Da deine fetchProfile()-Methode genau das macht (GET /api/users/me),
+    // können wir sie hier einfach wiederverwenden.
+    await authStore.fetchProfile()
+
+    if (continueShopping) {
+      // Gutscheine laden
+      const { data } = await apiClient.get<PrepaidVoucherDTO[]>('/api/vouchers/available')
+      availableVouchers.value = data
+
+      // Ansicht zurücksetzen
+      selectedProduct.value = null
+      forceSelfPay.value = false
+      quantity.value = 1
+      searchQuery.value = ''
+      kbStore.close()
+    } else {
+      authStore.logout()
+      router.push('/login')
+    }
   } catch (e) {
     alert('Fehler beim Kauf')
+  } finally {
     isLoading.value = false
   }
 }
-
 const handleIssueVoucher = async () => {
   if (!selectedProduct.value) return
   isLoading.value = true
@@ -676,6 +704,22 @@ const formatPrice = (c: number) =>
   border-radius: 1.25rem;
   font-weight: 800;
   cursor: pointer;
+}
+.btn-secondary-main {
+  width: 100%;
+  padding: 1.25rem;
+  border-radius: 1.5rem;
+  border: 2px solid #38a169;
+  background: #f0fff4;
+  color: #276749;
+  font-size: 1.2rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-secondary-main:hover {
+  background: #e6ffed;
 }
 .btn-alt-red {
   background: #fff5f5;
