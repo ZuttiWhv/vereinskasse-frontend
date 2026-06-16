@@ -1,5 +1,14 @@
 <template>
   <div class="dashboard">
+    <transition name="welcome-fade">
+      <div v-if="showWelcome" class="welcome-toast">
+        <span class="icon">👋</span>
+        <p>
+          Hallo, <strong>{{ authStore.user?.username }}</strong
+          >!
+        </p>
+      </div>
+    </transition>
     <div class="search-section" v-if="!selectedProduct">
       <div class="search-input-wrapper">
         <span class="search-icon">🔍</span>
@@ -265,6 +274,8 @@ const voucherForSelectedProduct = computed(() => {
   return availableVouchers.value.find((v) => v.productId === selectedProduct.value!.id)
 })
 
+const showWelcome = ref(false)
+
 const getVoucherCountForProduct = (productId: number) => {
   return availableVouchers.value
     .filter((v) => v.productId === productId)
@@ -334,6 +345,11 @@ const cleanupActivityListeners = () => {
 }
 
 onMounted(async () => {
+  showWelcome.value = true
+  setTimeout(() => {
+    showWelcome.value = false
+  }, 3000) //
+
   isLoading.value = true
   setupActivityListeners()
   resetInactivityTimer()
@@ -814,6 +830,26 @@ const formatPrice = (c: number) =>
 .animate-pop {
   animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
+.welcome-toast {
+  position: fixed;
+  top: 25%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #2d3748;
+  color: white;
+  padding: 1.5rem 2.5rem;
+  border-radius: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  z-index: 2000;
+  font-size: 1.25rem;
+  font-weight: 600;
+  pointer-events: none; /* Verhindert Klick-Blockade */
+}
+
+
 @keyframes pop {
   from {
     transform: scale(0.9);

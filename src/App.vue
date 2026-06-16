@@ -54,81 +54,49 @@
                 :class="{ 'is-active': isAdminMenuOpen }"
               >
                 <router-link
-                  v-if="authStore.hasAuthority('WRITE_CATEGORY')"
                   to="/admin/categories"
                   class="drop-item"
                   @click="isAdminMenuOpen = false"
                   >Kategorien</router-link
                 >
-                <router-link
-                  v-if="authStore.hasAuthority('WRITE_ROLE')"
-                  to="/admin/roles"
-                  class="drop-item"
-                  @click="isAdminMenuOpen = false"
+                <router-link to="/admin/roles" class="drop-item" @click="isAdminMenuOpen = false"
                   >Rollen & Rechte</router-link
                 >
-                <router-link
-                  v-if="authStore.hasAuthority('WRITE_OUS')"
-                  to="/admin/ous"
-                  class="drop-item"
-                  @click="isAdminMenuOpen = false"
+                <router-link to="/admin/ous" class="drop-item" @click="isAdminMenuOpen = false"
                   >Benutzerorganisation</router-link
                 >
-                <router-link
-                  v-if="authStore.hasAuthority('WRITE_PRODUCT')"
-                  to="/admin/products"
-                  class="drop-item"
-                  @click="isAdminMenuOpen = false"
+                <router-link to="/admin/products" class="drop-item" @click="isAdminMenuOpen = false"
                   >Produkte</router-link
                 >
                 <router-link
-                  v-if="authStore.hasAuthority('WRITE_BILLING_GROUP')"
                   to="/admin/billinggroups"
                   class="drop-item"
                   @click="isAdminMenuOpen = false"
                   >Abrechnungsgruppen</router-link
                 >
-                <router-link
-                  v-if="authStore.hasAuthority('READ_ALL_SALES')"
-                  to="/admin/vouchers"
-                  class="drop-item"
-                  @click="isAdminMenuOpen = false"
+                <router-link to="/admin/vouchers" class="drop-item" @click="isAdminMenuOpen = false"
                   >Voucher-Auswertung</router-link
                 >
-                <router-link
-                  v-if="authStore.hasAuthority('WRITE_DEVICE')"
-                  to="/admin/devices"
-                  class="drop-item"
-                  @click="isAdminMenuOpen = false"
+                <router-link to="/admin/devices" class="drop-item" @click="isAdminMenuOpen = false"
                   >Geräteverwaltung</router-link
                 >
-                <router-link
-                  v-if="authStore.hasAuthority('WRITE_USER')"
-                  to="/admin/users"
-                  class="drop-item"
-                  @click="isAdminMenuOpen = false"
+                <router-link to="/admin/users" class="drop-item" @click="isAdminMenuOpen = false"
                   >Nutzerverwaltung</router-link
                 >
                 <div class="border-t my-1"></div>
                 <router-link
-                  v-if="authStore.hasAuthority('READ_ALL_BALANCES')"
                   to="/admin/balances"
                   class="drop-item font-semibold text-emerald-600"
                   @click="isAdminMenuOpen = false"
                   >📊 Monatsabschluss</router-link
                 >
                 <router-link
-                    v-if="authStore.hasAuthority('EXPORT_PRODUCT_BARCODES')"
-                    to="/admin/pdfexport"
-                    class="drop-item font-semibold text-emerald-600"
-                    @click="isAdminMenuOpen = false"
-                >Listendruck</router-link
-                >
-                <router-link
-                  v-if="authStore.hasAuthority('WRITE_SETTINGS')"
-                  to="/admin/settings"
-                  class="drop-item"
+                  to="/admin/pdfexport"
+                  class="drop-item font-semibold text-emerald-600"
                   @click="isAdminMenuOpen = false"
+                  >Listendruck</router-link
+                >
+                <router-link to="/admin/settings" class="drop-item" @click="isAdminMenuOpen = false"
                   >⚙️ Einstellungen</router-link
                 >
               </div>
@@ -142,18 +110,24 @@
               <button
                 class="flex items-center space-x-3 bg-black/20 hover:bg-black/30 px-3 py-1.5 rounded-full border border-white/10 transition-colors"
               >
-                <div class="flex flex-col items-end leading-tight hidden sm:flex">
-                  <span class="text-[10px] font-bold opacity-70 uppercase tracking-widest"
-                    >Saldo</span
-                  >
-                  <span class="text-sm font-mono font-bold">{{
-                    formatCurrency(authStore.user?.balance ?? 0)
+                <div class="flex items-center space-x-3 leading-tight hidden sm:flex">
+                  <div class="flex flex-col items-end">
+                    <span class="text-[9px] font-bold opacity-70 uppercase tracking-widest"
+                      >Saldo</span
+                    >
+                    <span class="text-sm font-mono font-bold">{{
+                      formatCurrency(authStore.user?.balance ?? 0)
+                    }}</span>
+                  </div>
+                  <div class="h-6 w-[1px] bg-white/20"></div>
+                  <span class="text-sm font-bold text-emerald-300">{{
+                    authStore.user?.username
                   }}</span>
                 </div>
                 <div
-                  class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-lg border border-white/20"
+                  class="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-xs font-bold text-white border border-white/20"
                 >
-                  👤
+                  {{ authStore.user?.username?.charAt(0).toUpperCase() }}
                 </div>
               </button>
 
@@ -162,16 +136,17 @@
                 :class="{ 'is-active': isUserMenuOpen }"
               >
                 <div class="px-4 py-2 border-b mb-1">
-                  <p class="text-xs text-gray-400 font-semibold uppercase">User</p>
-                  <p class="text-sm font-bold truncate">{{ authStore.user?.username }}</p>
+                  <p class="text-xs text-gray-400 font-semibold uppercase">Eingeloggt als</p>
+                  <p class="text-sm font-bold truncate text-emerald-600">
+                    {{ authStore.user?.username }}
+                  </p>
                 </div>
                 <router-link
                   to="/profile"
                   class="drop-item flex items-center space-x-2"
                   @click="isUserMenuOpen = false"
                 >
-                  <span>⚙️</span>
-                  <span>Mein Profil</span>
+                  <span>⚙️</span> <span>Mein Profil</span>
                 </router-link>
               </div>
             </div>
@@ -217,10 +192,10 @@ import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 import apiClient from '@/api/client'
-import VirtualKeyboard from '@/components/VirtualKeyboard.vue' // Import
+import VirtualKeyboard from '@/components/VirtualKeyboard.vue'
 import { useKeyboardStore } from '@/stores/keyboard'
-const kbStore = useKeyboardStore()
 
+const kbStore = useKeyboardStore()
 const authStore = useAuthStore()
 const router = useRouter()
 
@@ -274,44 +249,27 @@ const handleLogout = () => {
 }
 
 const formatCurrency = (cents: number) => {
-  return new Intl.NumberFormat('de-DE', {
-    style: 'currency',
-    currency: 'EUR',
-  }).format(cents / 100)
+  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(cents / 100)
 }
 
 onMounted(fetchSettings)
 </script>
 
 <style>
-/* CSS VARIABLEN */
 :root {
   --primary-color: #2563eb;
   --secondary-color: #1e40af;
   --nav-text-color: #ffffff;
-  /* Automatisch abgeleitete Fokus-Farben */
   --focus-ring-color: color-mix(in srgb, var(--primary-color), transparent 80%);
   --focus-bg-color: color-mix(in srgb, var(--primary-color), white 95%);
 }
 
-.input-keyboard-active {
-  outline: none !important;
-  border-color: var(--primary-color) !important;
-  box-shadow: 0 0 0 3px var(--focus-ring-color) !important;
-  background-color: var(--focus-bg-color) !important;
-  transition: all 0.2s ease-in-out;
-}
-
-/* NAVBAR BASIS */
 .custom-nav {
   background-color: var(--primary-color);
 }
-
-/* DROPDOWN LOGIK */
 .dropdown-container {
   position: relative;
 }
-
 .dropdown-menu {
   position: absolute;
   top: 100%;
@@ -323,15 +281,12 @@ onMounted(fetchSettings)
   transition: all 0.2s ease-out;
   pointer-events: none;
 }
-
 .dropdown-menu.is-active {
   display: block;
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
 }
-
-/* Brücke für Hover-Stabilität */
 .dropdown-container::after {
   content: '';
   position: absolute;
@@ -341,7 +296,6 @@ onMounted(fetchSettings)
   height: 0.6rem;
 }
 
-/* ITEMS */
 .nav-link {
   padding: 0.5rem 0.875rem;
   border-radius: 0.5rem;
@@ -350,14 +304,11 @@ onMounted(fetchSettings)
   color: var(--nav-text-color);
   transition: background 0.2s;
 }
-
 .nav-link:hover {
   background-color: rgba(255, 255, 255, 0.15);
 }
-
 .nav-link-active {
   background-color: rgba(0, 0, 0, 0.2) !important;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .drop-item {
@@ -365,17 +316,14 @@ onMounted(fetchSettings)
   padding: 0.75rem 1rem;
   font-size: 0.875rem;
   color: #374151;
-  text-decoration: none;
   transition: all 0.15s;
 }
-
 .drop-item:hover {
   background-color: #f8fafc;
   color: var(--primary-color);
   padding-left: 1.25rem;
 }
 
-/* TRANSITIONS */
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.15s ease;
@@ -385,30 +333,16 @@ onMounted(fetchSettings)
   opacity: 0;
 }
 
-/* SCROLLBAR FIX */
 body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
-
-/* 1. Globaler Reset für den Browser-Standard (Blau) */
 *:focus {
   outline: none !important;
 }
-
-/* 2. Zuweisung der Systemfarbe an alle Formular-Elemente */
-select:focus,
-input:focus,
-textarea:focus {
+input:focus {
   border-color: var(--primary-color) !important;
-  /* Wir nutzen hier die Variable, die du oben mit color-mix definiert hast */
   box-shadow: 0 0 0 3px var(--focus-ring-color) !important;
-}
-
-/* 3. Speziell für das Kategorien-Dropdown, falls es eine ID hat */
-#category:focus,
-.category-select:focus {
-  border-color: var(--primary-color) !important;
 }
 </style>
