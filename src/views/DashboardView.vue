@@ -1,5 +1,14 @@
 <template>
   <div class="dashboard">
+    <transition name="fade">
+      <div v-if="showWelcome" class="welcome-toast">
+        <span class="icon">👋</span>
+        <p>
+          Hallo, <strong>{{ authStore.user?.username }}</strong
+          >!
+        </p>
+      </div>
+    </transition>
     <div class="search-section" v-if="!selectedProduct">
       <div class="search-input-wrapper">
         <span class="search-icon">🔍</span>
@@ -265,6 +274,8 @@ const voucherForSelectedProduct = computed(() => {
   return availableVouchers.value.find((v) => v.productId === selectedProduct.value!.id)
 })
 
+const showWelcome = ref(false)
+
 const getVoucherCountForProduct = (productId: number) => {
   return availableVouchers.value
     .filter((v) => v.productId === productId)
@@ -334,6 +345,11 @@ const cleanupActivityListeners = () => {
 }
 
 onMounted(async () => {
+  showWelcome.value = true
+  setTimeout(() => {
+    showWelcome.value = false
+  }, 3000) //
+
   isLoading.value = true
   setupActivityListeners()
   resetInactivityTimer()
@@ -814,6 +830,34 @@ const formatPrice = (c: number) =>
 .animate-pop {
   animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
+.welcome-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: #2d3748;
+  color: white;
+  padding: 1rem 1.5rem;
+  border-radius: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  z-index: 2000;
+  font-weight: 600;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition:
+    opacity 0.5s,
+    transform 0.5s;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
 @keyframes pop {
   from {
     transform: scale(0.9);
