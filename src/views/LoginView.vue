@@ -18,7 +18,9 @@
           <button v-if="navigationHistory.length > 0" class="back-link" @click="goBack">
             ← Zurück
           </button>
-          <span class="current-node">{{ currentLevel?.name }}</span>
+          <span v-if="navigationHistory.length > 0" class="current-node">
+            {{ currentLevel?.name }}
+          </span>
         </div>
 
         <div class="selection-scroll-area">
@@ -169,8 +171,6 @@ const checkQuickLogin = async () => {
   try {
     const { data: settings } = await apiClient.get('/api/settings')
     isBarcodeEnabled.value = settings.allowBarcodeLogin
-
-    // NEU: Auslesen der Schriftgröße (Sollte das Feld fehlen, greift das Fallback 24px)
     fontsizeQuickLogin.value = settings.fontsizeQuickLogin || 24
 
     if (settings.quickLogin) {
@@ -456,8 +456,9 @@ onUnmounted(() => {
 }
 
 .selection-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center; /* Zentriert alle Elemente, auch die in der letzten Reihe */
   gap: 14px;
 }
 
@@ -471,13 +472,13 @@ onUnmounted(() => {
   border-radius: 14px;
   background: #f8fafc;
   cursor: pointer;
-  /* gelöscht: font-size: 0.9rem (wird jetzt reaktiv per Inline-Style geregelt) */
   font-weight: 600;
   transition:
     all 0.2s ease,
     font-size 0.2s ease;
+  flex: 1 1 140px;
+  max-width: calc(25% - 11px);
 }
-
 .grid-item:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
