@@ -47,6 +47,50 @@ const getActiveInputElement = (): HTMLInputElement | HTMLTextAreaElement | null 
 }
 
 /**
+ * Passt das Scroll-Verhalten und den unteren Rand der Seite an
+ */
+const adjustScroll = async () => {
+  if (!kbStore.isOpen) {
+    // Wenn Tastatur schließt, räumen wir das Padding wieder auf
+    document.body.style.paddingBottom = ''
+    return
+  }
+
+  await nextTick()
+  const keyboardEl = document.querySelector('.keyboard-container') as HTMLElement
+  if (!keyboardEl) return
+
+  // offsetHeight bleibt auch während der CSS-Translate-Animation korrekt
+  const keyboardHeight = keyboardEl.offsetHeight || 300
+  // Puffer hinzufügen (damit Buttons unter dem Feld auch noch sichtbar sind)
+  const paddingBuffer = 80
+
+  // 1. Die Seite virtuell nach unten verlängern
+  document.body.style.paddingBottom = `${keyboardHeight + paddingBuffer}px`
+
+  // 2. Das aktive Element in den sichtbaren Bereich scrollen
+  setTimeout(() => {
+    const inputEl = getActiveInputElement()
+    if (inputEl) {
+      const rect = inputEl.getBoundingClientRect()
+      const visibleHeight = window.innerHeight - keyboardHeight
+
+      // Berechnen, wie weit das Element verdeckt ist
+      // Wir wollen, dass unter dem Element noch Platz ist (z.B. für Speichern-Buttons)
+      const offset = rect.bottom - visibleHeight + paddingBuffer
+
+      if (offset > 0) {
+        // Element wird von Tastatur verdeckt -> nach unten scrollen
+        window.scrollBy({ top: offset, behavior: 'smooth' })
+      } else if (rect.top < 0) {
+        // Element ist nach oben aus dem Bild gerutscht -> nach oben scrollen
+        window.scrollBy({ top: rect.top - 20, behavior: 'smooth' })
+      }
+    }
+  }, 50) // Kurzer Delay, damit der DOM und Fokus bereit sind
+}
+
+/**
  * Synchronisiert den Wert in die Tastatur
  */
 const syncToKeyboard = (value: string) => {
@@ -65,7 +109,6 @@ const handleOSKChange = async (input: string) => {
     return
   }
 
-  // Cursor-Position VOR der Änderung merken (aus dem internen Caret-Status der Library)
   const caretPos = keyboard.caretPosition ?? inputEl.selectionStart
 
   isUpdatingFromOSK = true
@@ -73,7 +116,6 @@ const handleOSKChange = async (input: string) => {
 
   await nextTick()
 
-  // Cursor im echten HTML-Input wieder an die richtige Stelle setzen
   if (inputEl) {
     inputEl.focus()
     inputEl.setSelectionRange(caretPos, caretPos)
@@ -82,9 +124,6 @@ const handleOSKChange = async (input: string) => {
   isUpdatingFromOSK = false
 }
 
-/**
- * FIX: Schließen beim Tabben oder Fokus-Wechsel
- */
 const handleFocusChange = (event: FocusEvent) => {
   const target = event.target as HTMLElement
   if (!target) return
@@ -93,12 +132,8 @@ const handleFocusChange = (event: FocusEvent) => {
   const isInput = ['INPUT', 'TEXTAREA'].includes(target.tagName)
   const isSameInput = target.id === kbStore.activeInputId
 
-  // Wenn wir die Tastatur verlassen und das neue Ziel kein Input ist
-  // ODER ein ganz anderes Input (das Öffnen eines neuen Feldes wird vom Feld selbst getriggert)
   if (kbStore.isOpen && !isWithinKeyboard && (!isInput || !isSameInput)) {
-    // Kurzer Delay, damit Klicks auf "Fertig" oder Feldwechsel sauber verarbeitet werden
     setTimeout(() => {
-      // Prüfen, ob der Fokus immer noch außerhalb ist
       const currentFocus = document.activeElement
       if (
         currentFocus &&
@@ -111,9 +146,6 @@ const handleFocusChange = (event: FocusEvent) => {
   }
 }
 
-/**
- * Hardware-Eingabe: Synchronisiert Cursor und Wert vom DOM zur Tastatur
- */
 const handlePhysicalInput = (event: Event) => {
   const target = event.target as HTMLInputElement
   if (target && target.id === kbStore.activeInputId) {
@@ -142,6 +174,14 @@ const handleOutsideClick = (event: MouseEvent) => {
   }
 }
 
+// Beobachte das Öffnen/Schließen und Feldwechsel für das Scrolling
+watch(
+  () => [kbStore.isOpen, kbStore.activeInputId],
+  () => {
+    adjustScroll()
+  },
+)
+
 watch(
   () => kbStore.keyboardType,
   (newType) => {
@@ -151,8 +191,19 @@ watch(
 
 watch(
   () => kbStore.activeInputId,
-  () => {
-    syncToKeyboard(kbStore.inputValue || '')
+  async (newId) => {
+    if (newId && keyboard) {
+      await nextTick()
+      const inputEl = getActiveInputElement()
+      if (inputEl) {
+        // Wert direkt in die Library hämmern
+        keyboard.setInput(inputEl.value)
+        // Cursor-Position der Library explizit auf das Ende des Textes (oder aktuelle Position) setzen
+        keyboard.setCaretPosition(inputEl.selectionStart)
+      }
+    } else {
+      syncToKeyboard(kbStore.inputValue || '')
+    }
   },
 )
 
@@ -165,7 +216,7 @@ watch(
 
 onMounted(async () => {
   globalThis.addEventListener('mousedown', handleOutsideClick)
-  globalThis.addEventListener('focusin', handleFocusChange) // RE-ADDED: Fix für Tabbing
+  globalThis.addEventListener('focusin', handleFocusChange)
   globalThis.addEventListener('input', handlePhysicalInput)
   globalThis.addEventListener('pointerup', handlePointerUp)
 
@@ -226,6 +277,9 @@ onUnmounted(() => {
   globalThis.removeEventListener('focusin', handleFocusChange)
   globalThis.removeEventListener('input', handlePhysicalInput)
   globalThis.removeEventListener('pointerup', handlePointerUp)
+
+  // Padding beim Verlassen der Komponente sicherheitshalber entfernen
+  document.body.style.paddingBottom = ''
 })
 
 const handleShift = () => {
