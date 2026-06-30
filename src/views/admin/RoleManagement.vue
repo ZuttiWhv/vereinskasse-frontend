@@ -11,26 +11,39 @@
       </button>
     </div>
 
+    <!-- Grid für die Rollenkarten -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <div
         v-for="role in roles"
         :key="role.id"
         class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition flex flex-col relative overflow-hidden"
       >
-        <div
-          v-if="role.forcePasswordLogin"
-          class="absolute top-0 right-0 bg-amber-500 text-white px-3 py-1 rounded-bl-lg shadow-sm flex items-center gap-1"
-        >
-          <span class="text-[10px] font-bold uppercase tracking-wider">Secure</span>
-          <span class="text-xs">🔒</span>
-        </div>
-
+        <!-- Titel & Badges -->
         <div class="mb-4">
-          <h3 class="text-lg font-bold text-gray-900 truncate pr-16" :title="role.name">
+          <h3 class="text-lg font-bold text-gray-900 truncate pr-6" :title="role.name">
             {{ role.name }}
           </h3>
+
+          <div class="mt-2 flex flex-wrap gap-1.5">
+            <!-- Einheitliches Secure Badge -->
+            <div
+              v-if="role.forcePasswordLogin"
+              class="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded"
+            >
+              <span>🔒</span> Secure-Login
+            </div>
+
+            <!-- Einheitliches Gebührenbefreit Badge -->
+            <div
+              v-if="role.feeExempt"
+              class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded"
+            >
+              <span>🏷️</span> Gebührenbefreit
+            </div>
+          </div>
         </div>
 
+        <!-- Rechte -->
         <div class="flex-grow">
           <p class="text-[11px] uppercase tracking-wider text-gray-400 mb-2 font-bold">
             Zugewiesene Rechte
@@ -49,6 +62,7 @@
           </div>
         </div>
 
+        <!-- Card-Aktionen (Jetzt exakt einmal vorhanden) -->
         <div class="mt-6 pt-4 border-t border-gray-50 flex justify-end gap-4">
           <button
             v-if="authStore.hasAuthority('WRITE_ROLE')"
@@ -68,6 +82,7 @@
       </div>
     </div>
 
+    <!-- Modal zum Erstellen/Bearbeiten -->
     <div
       v-if="showModal"
       class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50"
@@ -82,7 +97,7 @@
           <span v-if="isEditing" class="text-xs font-mono text-gray-400">#{{ formData.id }}</span>
         </div>
 
-        <div class="p-6 overflow-y-auto flex-grow space-y-6">
+        <div class="p-6 overflow-y-auto flex-grow space-y-4">
           <div>
             <label class="block text-sm font-semibold text-gray-600 mb-1">Anzeigename</label>
             <input
@@ -95,6 +110,7 @@
             />
           </div>
 
+          <!-- Toggle: Secure Login -->
           <div
             class="p-4 rounded-xl border transition-colors"
             :class="
@@ -126,6 +142,40 @@
             </div>
           </div>
 
+          <!-- Toggle: Gebührenbefreiung -->
+          <div
+            class="p-4 rounded-xl border transition-colors"
+            :class="
+              formData.feeExempt ? 'bg-emerald-50 border-emerald-200' : 'bg-gray-50 border-gray-200'
+            "
+          >
+            <div class="flex items-center justify-between">
+              <div>
+                <span
+                  class="block text-sm font-bold"
+                  :class="formData.feeExempt ? 'text-emerald-900' : 'text-gray-800'"
+                >
+                  Von Vereinsgebühren befreien
+                </span>
+                <span class="text-xs text-gray-500 leading-tight block mt-0.5"
+                  >Inhaber, die nur gebührenbefreite Rollen haben, zahlen keine
+                  Monatsbeiträge.</span
+                >
+              </div>
+              <button
+                @click="formData.feeExempt = !formData.feeExempt"
+                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
+                :class="formData.feeExempt ? 'bg-emerald-500' : 'bg-gray-300'"
+              >
+                <span
+                  class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm"
+                  :class="formData.feeExempt ? 'translate-x-6' : 'translate-x-1'"
+                />
+              </button>
+            </div>
+          </div>
+
+          <!-- Berechtigungen Checkboxes -->
           <div>
             <label class="block text-sm font-semibold text-gray-600 mb-3">Berechtigungen</label>
             <div
@@ -187,7 +237,8 @@ interface Role {
   id: number
   name: string
   permissions: Permission[]
-  forcePasswordLogin: boolean // Neu hinzugefügt
+  forcePasswordLogin: boolean
+  feeExempt: boolean
 }
 
 // --- State ---
@@ -196,11 +247,12 @@ const allPermissions = ref<Permission[]>([])
 const showModal = ref(false)
 const isEditing = ref(false)
 
-// Formular-Daten erweitert
+// Formular-Daten
 const formData = ref({
   id: null as number | null,
   name: '',
   forcePasswordLogin: false,
+  feeExempt: false,
 })
 const selectedPermissionIds = ref<number[]>([])
 
@@ -227,16 +279,15 @@ const fetchPermissions = async () => {
 const openModal = (role?: Role) => {
   if (role) {
     isEditing.value = true
-    // Wir setzen die Werte einzeln, um sicherzugehen, dass die Reaktivität greift
     formData.value.id = role.id
     formData.value.name = role.name
-    // WICHTIG: Explizite Konvertierung zu Boolean (!! erzwingt true/false)
     formData.value.forcePasswordLogin = role.forcePasswordLogin
+    formData.value.feeExempt = role.feeExempt
 
     selectedPermissionIds.value = role.permissions.map((p) => p.id)
   } else {
     isEditing.value = false
-    formData.value = { id: null, name: '', forcePasswordLogin: false }
+    formData.value = { id: null, name: '', forcePasswordLogin: false, feeExempt: false }
     selectedPermissionIds.value = []
   }
   showModal.value = true
@@ -252,6 +303,7 @@ const saveRole = async () => {
     const payload = {
       name: formData.value.name,
       forcePasswordLogin: formData.value.forcePasswordLogin,
+      feeExempt: formData.value.feeExempt,
       permissions: selectedPermissionIds.value.map((id) => ({ id })),
     }
 
