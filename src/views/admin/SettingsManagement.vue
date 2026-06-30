@@ -308,6 +308,7 @@
         <div
           class="bg-gray-50 border rounded-xl p-4 pointer-events-none border-dashed border-gray-300 sticky top-14"
         >
+          <!-- Header der App -->
           <div
             :style="{ backgroundColor: settings.primaryColor, color: settings.navTextColor }"
             class="h-12 rounded-t-lg flex items-center px-3 shadow-sm transition-all duration-500"
@@ -321,14 +322,43 @@
             <div v-else class="w-6 h-6 bg-white/20 rounded-full mr-2"></div>
             <div class="text-xs font-bold truncate">{{ settings.vereinName }}</div>
           </div>
-          <div class="bg-white p-4 space-y-3 rounded-b-lg border-x border-b">
-            <div
-              :style="{ fontSize: settings.fontsizeQuickLogin + 'px' }"
-              class="font-bold text-gray-700 transition-all duration-200 truncate"
-            >
-              Muster Benutzer
+
+          <!-- Hauptinhalt der App-Vorschau -->
+          <div class="bg-white p-4 space-y-4 rounded-b-lg border-x border-b">
+            <!-- FALL A: Quick-Login ist AKTIV -> Zeige die Kacheln mit der konfigurierten Schriftgröße -->
+            <div v-if="settings.quickLogin" class="space-y-2">
+              <span class="text-[10px] text-gray-400 block font-semibold uppercase tracking-wider"
+                >Quick-Login Auswahl</span
+              >
+              <div class="grid grid-cols-2 gap-2">
+                <div
+                  :style="{
+                    borderColor: settings.primaryColor + '30',
+                    fontSize: settings.fontsizeQuickLogin + 'px',
+                  }"
+                  class="border-2 rounded-lg p-3 text-center font-bold text-gray-800 bg-gray-50/50 shadow-sm transition-all duration-200 line-clamp-1 flex items-center justify-center min-h-[4rem]"
+                >
+                  Abteilung 1
+                </div>
+                <div
+                  :style="{
+                    borderColor: settings.primaryColor + '30',
+                    fontSize: settings.fontsizeQuickLogin + 'px',
+                  }"
+                  class="border-2 rounded-lg p-3 text-center font-bold text-gray-800 bg-gray-50/50 shadow-sm transition-all duration-200 line-clamp-1 flex items-center justify-center min-h-[4rem]"
+                >
+                  Mustermann
+                </div>
+              </div>
             </div>
-            <div class="h-2 w-1/2 bg-gray-100 rounded"></div>
+
+            <!-- FALL B: Quick-Login ist DEAKTIVIERT -> Zeige das Standard-Layout -->
+            <div v-else class="space-y-2">
+              <div class="h-3 w-3/4 bg-gray-100 rounded"></div>
+              <div class="h-3 w-1/2 bg-gray-100 rounded"></div>
+            </div>
+
+            <!-- Globaler Button (nutzt die Primärfarbe) -->
             <div
               :style="{ backgroundColor: settings.primaryColor, color: settings.navTextColor }"
               class="h-8 w-full rounded shadow-sm flex items-center justify-center text-[10px] font-bold"
