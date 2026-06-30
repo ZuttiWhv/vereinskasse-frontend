@@ -900,8 +900,8 @@ const formatPrice = (c: number) =>
 }
 .welcome-toast {
   position: fixed;
-  top: 25%;
-  left: 50%;
+  top: 15%;
+  left: 25%;
   transform: translate(-50%, -50%);
   background: #2d3748;
   color: white;
