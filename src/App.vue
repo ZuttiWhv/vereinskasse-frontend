@@ -2,7 +2,7 @@
   <nav class="custom-nav text-white shadow-md w-full relative z-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex items-center justify-between h-16">
-        <div class="flex-shrink-0 flex items-center">
+        <div class="shrink-0 flex items-center">
           <router-link to="/" class="flex items-center space-x-3 group">
             <img
               v-if="settings.logoPath"
@@ -91,10 +91,16 @@
                   >📊 Monatsabschluss</router-link
                 >
                 <router-link
+                  to="/admin/monthly-fees"
+                  class="drop-item font-semibold text-emerald-600"
+                  @click="isAdminMenuOpen = false"
+                  >💵 Gebühren</router-link
+                >
+                <router-link
                   to="/admin/pdfexport"
                   class="drop-item font-semibold text-emerald-600"
                   @click="isAdminMenuOpen = false"
-                  >Listendruck</router-link
+                  >🖨️ Listendruck</router-link
                 >
                 <router-link to="/admin/settings" class="drop-item" @click="isAdminMenuOpen = false"
                   >⚙️ Einstellungen</router-link
@@ -110,7 +116,7 @@
               <button
                 class="flex items-center space-x-3 bg-black/20 hover:bg-black/30 px-3 py-1.5 rounded-full border border-white/10 transition-colors"
               >
-                <div class="flex items-center space-x-3 leading-tight hidden sm:flex">
+                <div class="flex items-center space-x-3 leading-tight sm:flex">
                   <div class="flex flex-col items-end">
                     <span class="text-[9px] font-bold opacity-70 uppercase tracking-widest"
                       >Saldo</span
@@ -119,7 +125,7 @@
                       formatCurrency(authStore.user?.balance ?? 0)
                     }}</span>
                   </div>
-                  <div class="h-6 w-[1px] bg-white/20"></div>
+                  <div class="h-6 w-px bg-white/20"></div>
                   <span class="text-sm font-bold text-emerald-300">{{
                     authStore.user?.username
                   }}</span>

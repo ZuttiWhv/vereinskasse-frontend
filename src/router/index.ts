@@ -41,8 +41,13 @@ const routes: RouteRecordRaw[] = [
     path: '/admin/settings',
     name: 'settings',
     component: () => import('@/views/admin/SettingsManagement.vue'),
-    // KORRIGIERT: 'authority' zu 'requiredAuthorities' geändert
     meta: { requiresAuth: true, requiredAuthorities: 'WRITE_SETTINGS' },
+  },
+  {
+    path: '/admin/monthly-fees',
+    name: 'monthly-fees',
+    component: () => import('@/views/admin/FeeJobsView.vue'),
+    meta: { requiresAuth: true, requiredAuthorities: 'WRITE_JOBS' },
   },
   {
     path: '/admin/vouchers',

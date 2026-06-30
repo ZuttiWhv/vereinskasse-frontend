@@ -79,3 +79,20 @@ export interface UserBalance {
   username: string
   balanceInCents: number
 }
+
+export interface BaseJob {
+  id: number
+  type: 'SCHEDULED_FEE' | 'BACKUP'
+  cronExpression: string
+  enabled: boolean
+}
+
+export interface ScheduledFeeJob extends BaseJob {
+  amountInCents: number
+  description: string
+}
+
+export interface BackupJob extends BaseJob {
+  targetPath: string
+  retentionDays: number
+}
