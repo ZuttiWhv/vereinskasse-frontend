@@ -28,6 +28,7 @@
               :key="item.id || item.name"
               class="grid-item"
               :class="{ 'user-item': item.isUser }"
+              :style="{ fontSize: fontsizeQuickLogin + 'px' }"
               @click="handleItemClick(item)"
             >
               <span class="icon">{{ item.isUser ? '👤' : '📁' }}</span>
@@ -38,6 +39,7 @@
               v-for="user in currentLevel?.usernames"
               :key="user"
               class="grid-item user-item"
+              :style="{ fontSize: fontsizeQuickLogin + 'px' }"
               @click="selectUser(user)"
             >
               <span class="icon">👤</span> {{ user }}
@@ -104,7 +106,6 @@ import { useKeyboardStore } from '@/stores/keyboard'
 
 const kbStore = useKeyboardStore()
 
-// Typfehler-Prävention für den Store-Aufruf
 const openKb = (id: string, currentVal: string) => {
   kbStore.open(id, currentVal)
 }
@@ -126,6 +127,9 @@ const selectedUsername = ref('')
 const isBarcodeEnabled = ref(false)
 const barcodeBuffer = ref('')
 const lastKeyTime = ref(0)
+
+// NEU: Reaktiver Speicher für die empfangene Schriftgröße mit Fallback
+const fontsizeQuickLogin = ref(24)
 
 const handleBarcodeLogin = async (barcode: string) => {
   isLoggingIn.value = true
@@ -165,6 +169,9 @@ const checkQuickLogin = async () => {
   try {
     const { data: settings } = await apiClient.get('/api/settings')
     isBarcodeEnabled.value = settings.allowBarcodeLogin
+
+    // NEU: Auslesen der Schriftgröße (Sollte das Feld fehlen, greift das Fallback 24px)
+    fontsizeQuickLogin.value = settings.fontsizeQuickLogin || 24
 
     if (settings.quickLogin) {
       const { data: tree } = await apiClient.get('/api/org-units/tree')
@@ -263,7 +270,6 @@ async function submit() {
   }
 }
 
-// Event Listener sauber typisiert aufgesetzt
 onMounted(() => {
   checkQuickLogin()
   globalThis.addEventListener('keydown', handleGlobalKeyDown)
@@ -419,12 +425,11 @@ onUnmounted(() => {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 80vh; /* Erhöht, damit die Box vertikal besser zentriert sitzt */
+  min-height: 80vh;
   padding: 1rem;
   position: relative;
 }
 
-/* BASIS CARD DESIGN */
 .login-card {
   background: white;
   padding: 2.5rem;
@@ -435,27 +440,23 @@ onUnmounted(() => {
   text-align: center;
   transition:
     max-width 0.3s ease-in-out,
-    padding 0.3s ease-in-out; /* Weicher Übergang beim Modus-Wechsel */
+    padding 0.3s ease-in-out;
 }
 
-/* NEU: WENN SCHNELLAUSWAHL AKTIV IST */
 .login-card.quick-login-wide {
-  max-width: 850px; /* Bietet massig Platz für Spalten */
+  max-width: 850px;
   padding: 3rem;
 }
 
-/* OPTIMIERT FÜR MEHR INHALT */
 .selection-scroll-area {
-  max-height: 420px; /* Mehr Platz zum Scrollen auf großen Displays */
+  max-height: 420px;
   overflow-y: auto;
   margin: 1.5rem 0;
   padding-right: 8px;
 }
 
-/* NEU: INTELLIGENTES GRID DAS SICH AN DIE BREITE ANPASST */
 .selection-grid {
   display: grid;
-  /* Erstellt automatisch so viele Spalten (min. 140px) wie reingehen */
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 14px;
 }
@@ -465,14 +466,16 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 1.2rem 0.8rem; /* Mehr vertikaler Platz für Icons */
+  padding: 1.2rem 0.8rem;
   border: 1px solid #e2e8f0;
   border-radius: 14px;
   background: #f8fafc;
   cursor: pointer;
-  font-size: 0.9rem;
+  /* gelöscht: font-size: 0.9rem (wird jetzt reaktiv per Inline-Style geregelt) */
   font-weight: 600;
-  transition: all 0.2s ease;
+  transition:
+    all 0.2s ease,
+    font-size 0.2s ease;
 }
 
 .grid-item:hover {
@@ -481,9 +484,10 @@ onUnmounted(() => {
   background: #fff;
 }
 
+/* OPTIMIERT: Nutzt 'em' statt 'rem', damit sich das Icon proportional zur gesetzten Schriftgröße mitskaliert! */
 .icon {
   margin-bottom: 6px;
-  font-size: 1.6rem; /* Größere, griffigere Icons */
+  font-size: 1.6em;
 }
 
 .login-form {
