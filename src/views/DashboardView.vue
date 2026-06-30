@@ -106,15 +106,11 @@
             </div>
             <div class="info-section">
               <div class="header-group">
-                <span class="category-label" v-if="selectedCategory">{{
-                  selectedCategory.name
-                }}</span>
                 <h2 class="item-title">
                   {{ selectedProduct.anzeigename || selectedProduct.name }}
                 </h2>
                 <p class="item-unit-price">{{ formatPrice(selectedProduct.price) }} pro Stück</p>
               </div>
-
               <template v-if="voucherForSelectedProduct && !forceSelfPay">
                 <div class="voucher-alert pulse-subtle">
                   <span class="icon">🎁</span>
@@ -162,6 +158,37 @@
                   </div>
                   <button class="q-btn plus" @click="quantity++">+</button>
                 </div>
+
+                <div class="quick-quantity-grid">
+                  <button
+                    type="button"
+                    @click="quantity = 6"
+                    class="btn-quick-q"
+                    :class="{ active: quantity === 6 }"
+                  >
+                    6x
+                  </button>
+                  <button
+                    type="button"
+                    @click="quantity = 20"
+                    class="btn-quick-q"
+                    :class="{ active: quantity === 20 }"
+                  >
+                    20x
+                  </button>
+                  <button
+                    type="button"
+                    @click="quantity = 24"
+                    class="btn-quick-q"
+                    :class="{ active: quantity === 24 }"
+                  >
+                    24x
+                  </button>
+                  <button type="button" @click="quantity = 1" class="btn-quick-q-reset">
+                    Reset (1)
+                  </button>
+                </div>
+
                 <div class="price-summary">
                   <span class="summary-label">Gesamtbetrag</span>
                   <span class="summary-value">{{
@@ -464,9 +491,8 @@ const formatPrice = (c: number) =>
 </script>
 
 <style scoped>
-/* CSS bleibt unverändert wie im letzten Schritt */
 .dashboard {
-  padding: 1.5rem;
+  padding: 0.75rem 1.5rem 1.5rem 1.5rem;
   max-width: 1200px;
   margin: 0 auto;
   color: #2d3748;
@@ -574,7 +600,7 @@ const formatPrice = (c: number) =>
 .purchase-container {
   display: flex;
   justify-content: center;
-  padding-top: 1rem;
+  padding-top: 0.5rem;
 }
 .purchase-card {
   background: #fff;
@@ -607,15 +633,15 @@ const formatPrice = (c: number) =>
 .info-section {
   flex: 1.2;
   min-width: 350px;
-  padding: 3rem;
+  padding: 1.25rem 2rem;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1.25rem;
 }
 .item-title {
-  font-size: 2.5rem;
+  font-size: 2rem;
   font-weight: 900;
-  margin: 0.5rem 0;
+  margin: 0.25rem 0;
 }
 .voucher-alert {
   background: #f0fff4;
@@ -662,6 +688,49 @@ const formatPrice = (c: number) =>
   font-size: 2.5rem;
   font-weight: 900;
 }
+
+/* JETZT KORREKT: Global verfügbare Styles für die Kasten-Schnellauswahl */
+.quick-quantity-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  margin-top: -1rem;
+}
+.btn-quick-q {
+  background: #edf2f7;
+  color: #4a5568;
+  border: 2px solid transparent;
+  padding: 0.75rem 0.25rem;
+  border-radius: 1rem;
+  font-size: 0.9rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+.btn-quick-q:active {
+  background: #cbd5e0;
+}
+.btn-quick-q.active {
+  background: #ebf8ff;
+  color: #2b6cb0;
+  border-color: #4299e1;
+  box-shadow: 0 4px 6px rgba(66, 153, 225, 0.15);
+}
+.btn-quick-q-reset {
+  background: #fff5f5;
+  color: #c53030;
+  border: 1px dashed #feb2b2;
+  padding: 0.75rem 0.25rem;
+  border-radius: 1rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-quick-q-reset:active {
+  background: #fed7d7;
+}
+
 .price-summary {
   display: flex;
   justify-content: space-between;
@@ -684,7 +753,7 @@ const formatPrice = (c: number) =>
 }
 .btn-main {
   width: 100%;
-  padding: 1.5rem;
+  padding: 1.4rem;
   border-radius: 1.5rem;
   border: none;
   background: #38a169;
@@ -733,7 +802,6 @@ const formatPrice = (c: number) =>
   cursor: pointer;
   transition: all 0.2s;
 }
-
 .btn-secondary-main:hover {
   background: #e6ffed;
 }
@@ -846,9 +914,8 @@ const formatPrice = (c: number) =>
   z-index: 2000;
   font-size: 1.25rem;
   font-weight: 600;
-  pointer-events: none; /* Verhindert Klick-Blockade */
+  pointer-events: none;
 }
-
 
 @keyframes pop {
   from {
@@ -887,6 +954,8 @@ const formatPrice = (c: number) =>
     box-shadow: 0 0 0 0 rgba(56, 161, 105, 0);
   }
 }
+
+/* Responsive Media Queries */
 @media (max-width: 768px) {
   .purchase-layout {
     flex-direction: column;
@@ -898,6 +967,12 @@ const formatPrice = (c: number) =>
   }
   .item-title {
     font-size: 2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .quick-quantity-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 </style>
