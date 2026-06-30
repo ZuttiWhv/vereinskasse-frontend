@@ -186,13 +186,19 @@ const form = ref({
   enabled: true,
 })
 
-// Hilfsfunktion: Zerlegt den CRON-String für die UI-Anzeige
-const parseCron = (cron: string) => {
+// Hilfsfunktion: Zerlegt den CRON-String sicher für die UI-Anzeige
+const parseCron = (cron: string | undefined) => {
   if (!cron) return { day: 1, hour: 0 }
+
   const parts = cron.split(' ')
+
+  // Falls der Cron-String beschädigt ist, greifen Fallback-Strings ('0' bzw. '1')
+  const hourStr = parts[2] ?? '0'
+  const dayStr = parts[3] ?? '1'
+
   return {
-    hour: Number.parseInt(parts[2]) || 0,
-    day: Number.parseInt(parts[3]) || 1,
+    hour: parseInt(hourStr, 10) || 0,
+    day: parseInt(dayStr, 10) || 1,
   }
 }
 
