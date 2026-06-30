@@ -114,33 +114,67 @@
           <div class="mb-4">
             <label class="block text-sm font-medium text-gray-700">Betrag in Euro</label>
             <input
-              v-model.number="form.amountEuro"
-              type="number"
-              step="0.01"
-              min="0.01"
+              id="jobamount"
+              @focus="kbStore.open('jobamount', String(form.amountEuro || ''), 'numeric')"
+              v-model="form.amountEuro"
+              type="text"
+              inputmode="decimal"
+              pattern="[0-9]*[.,]?[0-9]{0,2}"
               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="0.00"
               required
             />
           </div>
 
           <div class="grid grid-cols-2 gap-4 mb-6">
             <div>
-              <label class="block text-sm font-medium text-gray-700">Tag des Monats</label>
-              <select
-                v-model.number="form.day"
-                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-white"
+              <label class="block text-sm font-medium text-gray-700 mb-2">Tag des Monats</label>
+              <div
+                class="flex items-center space-x-1 border border-gray-300 rounded-lg p-1 bg-gray-50"
               >
-                <option v-for="d in 28" :key="d" :value="d">{{ d }}.</option>
-              </select>
+                <button
+                  type="button"
+                  @click="form.day = form.day > 1 ? form.day - 1 : 28"
+                  class="w-10 h-10 bg-white active:bg-gray-200 border border-gray-200 rounded-md shadow-sm text-lg font-bold text-gray-700"
+                >
+                  -
+                </button>
+                <div class="flex-1 text-center font-semibold text-gray-800 text-lg">
+                  {{ form.day }}.
+                </div>
+                <button
+                  type="button"
+                  @click="form.day = form.day < 28 ? form.day + 1 : 1"
+                  class="w-10 h-10 bg-white active:bg-gray-200 border border-gray-200 rounded-md shadow-sm text-lg font-bold text-gray-700"
+                >
+                  +
+                </button>
+              </div>
             </div>
+
             <div>
-              <label class="block text-sm font-medium text-gray-700">Uhrzeit</label>
-              <select
-                v-model.number="form.hour"
-                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-white"
+              <label class="block text-sm font-medium text-gray-700 mb-2">Uhrzeit</label>
+              <div
+                class="flex items-center space-x-1 border border-gray-300 rounded-lg p-1 bg-gray-50"
               >
-                <option v-for="h in 24" :key="h" :value="h - 1">{{ h - 1 }}:00 Uhr</option>
-              </select>
+                <button
+                  type="button"
+                  @click="form.hour = form.hour > 0 ? form.hour - 1 : 23"
+                  class="w-10 h-10 bg-white active:bg-gray-200 border border-gray-200 rounded-md shadow-sm text-lg font-bold text-gray-700"
+                >
+                  -
+                </button>
+                <div class="flex-1 text-center font-semibold text-gray-800 text-lg">
+                  {{ form.hour }}:00 Uhr
+                </div>
+                <button
+                  type="button"
+                  @click="form.hour = form.hour < 23 ? form.hour + 1 : 0"
+                  class="w-10 h-10 bg-white active:bg-gray-200 border border-gray-200 rounded-md shadow-sm text-lg font-bold text-gray-700"
+                >
+                  +
+                </button>
+              </div>
             </div>
           </div>
 
@@ -197,8 +231,8 @@ const parseCron = (cron: string | undefined) => {
   const dayStr = parts[3] ?? '1'
 
   return {
-    hour: parseInt(hourStr, 10) || 0,
-    day: parseInt(dayStr, 10) || 1,
+    hour: Number.parseInt(hourStr, 10) || 0,
+    day: Number.parseInt(dayStr, 10) || 1,
   }
 }
 
