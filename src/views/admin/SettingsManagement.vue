@@ -30,6 +30,54 @@
               </button>
             </div>
 
+            <div
+              v-if="settings.quickLogin"
+              class="pl-4 border-l-2 border-emerald-500/30 space-y-3 animate-fade-in"
+            >
+              <label for="fontsizeInput" class="block text-sm font-medium text-gray-700">
+                Schriftgröße im Quick-Login
+              </label>
+              <div class="flex items-center gap-3">
+                <select
+                  id="fontsizeSelect"
+                  aria-label="Vordefinierte Schriftgröße wählen"
+                  :value="
+                    [16, 24, 32].includes(settings.fontsizeQuickLogin)
+                      ? settings.fontsizeQuickLogin
+                      : 'custom'
+                  "
+                  @change="
+                    ($event) => {
+                      const val = ($event.target as HTMLSelectElement).value
+                      if (val !== 'custom') settings.fontsizeQuickLogin = parseInt(val)
+                    }
+                  "
+                  class="px-3 py-2 border rounded-lg bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option :value="16">Normal (16px)</option>
+                  <option :value="24">Groß (24px)</option>
+                  <option :value="32">Extra Groß (32px)</option>
+                  <option value="custom">Eigener Wert...</option>
+                </select>
+
+                <div class="flex items-center gap-1.5">
+                  <input
+                    id="fontsizeInput"
+                    v-model.number="settings.fontsizeQuickLogin"
+                    :class="{ 'input-keyboard-active': kbStore.activeInputId === 'fontsizeInput' }"
+                    @focus="
+                      kbStore.open('fontsizeInput', String(settings.fontsizeQuickLogin), 'default')
+                    "
+                    type="number"
+                    min="12"
+                    max="100"
+                    class="w-20 px-3 py-2 border rounded-lg text-sm text-center font-mono outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <span class="text-sm text-gray-500 font-medium">px</span>
+                </div>
+              </div>
+            </div>
+
             <div class="flex items-center justify-between">
               <div class="flex flex-col grow">
                 <span class="font-medium text-gray-700">PIN-Login erlauben</span>
@@ -176,9 +224,7 @@
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
-              <label
-                for="primaryColorPicker"
-                class="block text-sm font-medium text-gray-700 mb-1"
+              <label for="primaryColorPicker" class="block text-sm font-medium text-gray-700 mb-1"
                 >Primärfarbe</label
               >
               <div class="flex gap-2">
@@ -199,9 +245,7 @@
               </div>
             </div>
             <div>
-              <label
-                for="secondaryColorPicker"
-                class="block text-sm font-medium text-gray-700 mb-1"
+              <label for="secondaryColorPicker" class="block text-sm font-medium text-gray-700 mb-1"
                 >Sekundärfarbe</label
               >
               <div class="flex gap-2">
@@ -224,9 +268,7 @@
               </div>
             </div>
             <div>
-              <label
-                for="navTextColorPicker"
-                class="block text-sm font-medium text-gray-700 mb-1"
+              <label for="navTextColorPicker" class="block text-sm font-medium text-gray-700 mb-1"
                 >Nav Textfarbe</label
               >
               <div class="flex gap-2">
@@ -280,7 +322,13 @@
             <div class="text-xs font-bold truncate">{{ settings.vereinName }}</div>
           </div>
           <div class="bg-white p-4 space-y-3 rounded-b-lg border-x border-b">
-            <div class="h-3 w-3/4 bg-gray-100 rounded"></div>
+            <div
+              :style="{ fontSize: settings.fontsizeQuickLogin + 'px' }"
+              class="font-bold text-gray-700 transition-all duration-200 truncate"
+            >
+              Muster Benutzer
+            </div>
+            <div class="h-2 w-1/2 bg-gray-100 rounded"></div>
             <div
               :style="{ backgroundColor: settings.primaryColor, color: settings.navTextColor }"
               class="h-8 w-full rounded shadow-sm flex items-center justify-center text-[10px] font-bold"
@@ -314,6 +362,7 @@ const settings = ref({
   passwordlessLogin: false,
   allowBarcodeLogin: false,
   showUserWithoutOuAsUser: true,
+  fontsizeQuickLogin: 24, // NEU: Entspricht dem DB-Default-Wert 24
 })
 
 const fetchSettings = async () => {
@@ -367,3 +416,20 @@ const saveSettings = async () => {
 
 onMounted(fetchSettings)
 </script>
+
+<style scoped>
+/* Kleine Animation beim Einblenden der Schriftgrößenoption */
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>
