@@ -31,10 +31,12 @@
 <script setup lang="ts">
 import { onMounted, watch, nextTick, onUnmounted } from 'vue'
 import Keyboard from 'simple-keyboard'
+import { useRoute } from 'vue-router'
 import 'simple-keyboard/build/css/index.css'
 import { useKeyboardStore } from '@/stores/keyboard'
 
 const kbStore = useKeyboardStore()
+const route = useRoute()
 let keyboard: any = null
 let isUpdatingFromOSK = false
 
@@ -47,12 +49,18 @@ const getActiveInputElement = (): HTMLInputElement | HTMLTextAreaElement | null 
 }
 
 /**
- * Passt das Scroll-Verhalten und den unteren Rand der Seite an
+ * Passt das Scroll-Verhalten oder die Modal-Position an das OSK an
  */
 const adjustScroll = async () => {
   if (!kbStore.isOpen) {
-    // Wenn Tastatur schließt, räumen wir das Padding wieder auf
     document.body.style.paddingBottom = ''
+    // Alle Modale wieder zurücksetzen, wenn die Tastatur schließt
+    const modals = document.querySelectorAll(
+      '.issue-modal, .modal-overlay > div',
+    ) as NodeListOf<HTMLElement>
+    modals.forEach((m) => {
+      m.style.transform = ''
+    })
     return
   }
 
@@ -60,34 +68,42 @@ const adjustScroll = async () => {
   const keyboardEl = document.querySelector('.keyboard-container') as HTMLElement
   if (!keyboardEl) return
 
-  // offsetHeight bleibt auch während der CSS-Translate-Animation korrekt
   const keyboardHeight = keyboardEl.offsetHeight || 300
-  // Puffer hinzufügen (damit Buttons unter dem Feld auch noch sichtbar sind)
-  const paddingBuffer = 80
+  const paddingBuffer = 60 // Puffer erhöht für bessere Sichtbarkeit der Buttons im Modal
+  const inputEl = getActiveInputElement()
 
-  // 1. Die Seite virtuell nach unten verlängern
-  document.body.style.paddingBottom = `${keyboardHeight + paddingBuffer}px`
+  if (!inputEl) return
 
-  // 2. Das aktive Element in den sichtbaren Bereich scrollen
-  setTimeout(() => {
-    const inputEl = getActiveInputElement()
-    if (inputEl) {
+  // PRÜFUNG: Befindet sich das Eingabefeld in einem geöffneten Modal?
+  const modalContainer = inputEl.closest('.issue-modal') as HTMLElement
+
+  if (modalContainer) {
+    // MODAL-LOGIK: Wir schieben das Modal hoch, falls die Tastatur es überlagert
+    const rect = inputEl.getBoundingClientRect()
+    const keyboardTop = window.innerHeight - keyboardHeight
+
+    if (rect.bottom > keyboardTop - paddingBuffer) {
+      const offset = rect.bottom - keyboardTop + paddingBuffer
+      // Schiebt das Modal sanft per CSS-Translate nach oben
+      modalContainer.style.transition = 'transform 0.3s ease'
+      modalContainer.style.transform = `translateY(-${offset}px)`
+    }
+  } else {
+    // STANDARD-LOGIK: Für normale Input-Felder auf der Hauptseite
+    document.body.style.paddingBottom = `${keyboardHeight + paddingBuffer + 40}px`
+
+    setTimeout(() => {
       const rect = inputEl.getBoundingClientRect()
       const visibleHeight = window.innerHeight - keyboardHeight
-
-      // Berechnen, wie weit das Element verdeckt ist
-      // Wir wollen, dass unter dem Element noch Platz ist (z.B. für Speichern-Buttons)
       const offset = rect.bottom - visibleHeight + paddingBuffer
 
       if (offset > 0) {
-        // Element wird von Tastatur verdeckt -> nach unten scrollen
         window.scrollBy({ top: offset, behavior: 'smooth' })
       } else if (rect.top < 0) {
-        // Element ist nach oben aus dem Bild gerutscht -> nach oben scrollen
         window.scrollBy({ top: rect.top - 20, behavior: 'smooth' })
       }
-    }
-  }, 50) // Kurzer Delay, damit der DOM und Fokus bereit sind
+    }, 50)
+  }
 }
 
 /**
@@ -189,6 +205,16 @@ watch(
   },
 )
 
+// Schließt die Tastatur automatisch bei jedem Seitenwechsel / Router-Wechsel
+watch(
+  () => route.path,
+  () => {
+    if (kbStore.isOpen) {
+      kbStore.close()
+    }
+  },
+)
+
 watch(
   () => kbStore.activeInputId,
   async (newId) => {
@@ -196,9 +222,7 @@ watch(
       await nextTick()
       const inputEl = getActiveInputElement()
       if (inputEl) {
-        // Wert direkt in die Library hämmern
         keyboard.setInput(inputEl.value)
-        // Cursor-Position der Library explizit auf das Ende des Textes (oder aktuelle Position) setzen
         keyboard.setCaretPosition(inputEl.selectionStart)
       }
     } else {
@@ -277,8 +301,6 @@ onUnmounted(() => {
   globalThis.removeEventListener('focusin', handleFocusChange)
   globalThis.removeEventListener('input', handlePhysicalInput)
   globalThis.removeEventListener('pointerup', handlePointerUp)
-
-  // Padding beim Verlassen der Komponente sicherheitshalber entfernen
   document.body.style.paddingBottom = ''
 })
 
