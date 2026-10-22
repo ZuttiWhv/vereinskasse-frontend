@@ -188,6 +188,8 @@ const getTypeLabel = (type: string) => {
       return 'Einlösung'
     case 'SALE':
       return 'Kauf'
+    case 'MONTHLY_CONTRIBUTION':
+      return 'Monatsbeitrag'
     default:
       return type
   }
